@@ -1,3 +1,4 @@
+import os
 import datetime
 from aiohttp import web
 import socketio
@@ -5,11 +6,10 @@ import jwt
 import httpx
 import aiohttp_jinja2
 import jinja2
-
+from dotenv import load_dotenv
 
 colorize_terminal = False
-
-PORT = 8080
+PORT = 4204
 SERVER_URL = '0.0.0.0'
 sio = socketio.AsyncServer()
 app = web.Application()
@@ -17,7 +17,7 @@ sio.attach(app)
 aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader('templates'))
 active_sessions = {}
 connection_log = []
-
+load_dotenv()
 
 class UserSession:
     def __init__(self, sid, token, username, user_id, api_data, ip):
@@ -33,8 +33,12 @@ class UserSession:
     @staticmethod
     def verify_token(token, remote_ip, sid, username, this_session):
         try:
-            # Set verify_signature to true and add kwarg key for production
-            payload = jwt.decode(token, algorithms=['HS256'], options={'verify_signature': False})
+            payload = jwt.decode(
+                jwt=token,
+                key=os.getenv('WP_JWT'),
+                algorithms=['HS256'],
+                options={'verify_signature': True}
+            )
             # print(f'Payload: {c_grey(payload)}')
             print(
                 f'[{UserSession.dt()}]'
@@ -46,7 +50,10 @@ class UserSession:
             )
             return payload
         except jwt.InvalidTokenError as e:
-            print(f'[{UserSession.dt()}]{c_purple("<" + remote_ip + ">")} {c_cyan(username)} {c_blue(sid)} '
+            print(f'[{UserSession.dt()}]'
+                  f'{c_purple("<" + remote_ip + ">")} '
+                  f'{c_cyan(username)} '
+                  f'{c_blue(sid)} '
                   f'{c_red("Invalid token")}: {c_red(str(e))}')
             return None
 
@@ -196,10 +203,11 @@ async def disconnect(sid):
         session.product_id
     )
     try:
-        msg = f'{c_green("Node lock released sucessfully!")} ({license_api_response["activations_remaining"]})'
+        msg = f'{c_green("Node lock released successfully!")} ({license_api_response["activations_remaining"]})'
     except KeyError:
         try:
-            msg = f'{c_red("Node lock release failed!")} Code {c_red(license_api_response["code"])}. {license_api_response["error"]}'
+            msg = f'{c_red("Node lock release failed!")} Code {c_red(license_api_response["code"])}. ' \
+                  f'{license_api_response["error"]}'
         except KeyError:
             msg = "unknown"
     print(
@@ -272,36 +280,20 @@ app.router.add_get('/', index)
 # color console output (windows not supported)
 def c_grey(text: str) -> str:
     return f"\033[90m{text}\033[00m" if colorize_terminal else text
-
-
 def c_red(text: str) -> str:
     return f"\033[91m{text}\033[00m" if colorize_terminal else text
-
-
 def c_green(text: str) -> str:
     return f"\033[92m{text}\033[00m" if colorize_terminal else text
-
-
 def c_yellow(text: str) -> str:
     return f"\033[93m{text}\033[00m" if colorize_terminal else text
-
-
 def c_blue(text: str) -> str:
     return f"\033[94m{text}\033[00m" if colorize_terminal else text
-
-
 def c_purple(text: str) -> str:
     return f"\033[95m{text}\033[00m" if colorize_terminal else text
-
-
 def c_cyan(text: str) -> str:
     return f"\033[96m{text}\033[00m" if colorize_terminal else text
-
-
 def c_white(text: str) -> str:
     return f"\033[97m{text}\033[00m" if colorize_terminal else text
-
-
 def c_default(text: str) -> str:
     return f"\033[99m{text}\033[00m" if colorize_terminal else text
 

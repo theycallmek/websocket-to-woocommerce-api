@@ -1,10 +1,11 @@
-httpx
-aioconsole
-PyJWT
-Jinja2
-aiohttp-jinja2
-aiohttp
+httpx>=0.23.3
+aioconsole>=0.6.1
+PyJWT>=2.6.0
+Jinja2>=3.1.2
+aiohttp-jinja2>=1.5.1
+aiohttp>=3.8.4
 python-socketio>=5.8.0
-gunicorn
+gunicorn>=20.1.0
+python-dotenv>=1.0.0
 
-# httpx aioconsole PyJWT Jinja2 aiohttp-jinja2 aiohttp python-socketio gunicorn
+# httpx aioconsole PyJWT Jinja2 aiohttp-jinja2 aiohttp python-socketio gunicorn python-dotenv

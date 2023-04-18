@@ -7,15 +7,16 @@ import json
 import machineid
 from datetime import datetime
 
-# PORT = ":8080"
-# SERVER_URL = '127.0.0.1'
-SERVER_URL = 'http://34.71.173.144/'
-PORT = ""
+PORT = ":4204"
+SERVER_URL = 'http://127.0.0.1'
+# SERVER_URL = 'http://34.71.173.144/'
+# PORT = ""
 # SERVER_URL = 'https://websocket-test-meh3ibmmpq-uc.a.run.app'
 
 sio = socketio.AsyncClient()
 LIC_SESSION_ID = ''
-
+HEARTBEAT_ENABLED = False
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 @sio.on('connect')
 async def connect():
@@ -36,7 +37,7 @@ async def message(data):
 
 @sio.on('disconnect')
 async def disconnect():
-    await sio.disconnect()
+    HEARTBEAT_ENABLED = False
     print('disconnected from server')
     await sio.eio.disconnect()
 
@@ -51,11 +52,11 @@ async def on_heartbeat(data):
 
 
 async def heartbeat():
-    while True:
+    while HEARTBEAT_ENABLED:
         print('Sending heartbeat...')
         await sio.emit('heartbeat', 'ping')
         await asyncio.sleep(30)
-
+    return
 
 async def send_message():
     count = 0
@@ -143,19 +144,15 @@ async def main():
         return
     try:
         await sio.connect(f'{SERVER_URL}{PORT}', auth=token)
-        # await asyncio.Future()  # wait forever
-
-        # task = asyncio.create_task(send_message())
-        # await task
-
         tasks = [asyncio.create_task(heartbeat()), ]
         await asyncio.gather(*tasks)
+        await sio.wait()
     except exceptions.ConnectionError as e:
         print('Error:', e)
 
 
 def run_auth():
-    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     asyncio.run(main())
 
 
