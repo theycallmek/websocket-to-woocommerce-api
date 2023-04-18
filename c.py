@@ -7,9 +7,9 @@ import json
 import machineid
 from datetime import datetime
 
-PORT = ":4204"
+PORT = ":8080"
 SERVER_URL = 'http://127.0.0.1'
-# SERVER_URL = 'http://34.71.173.144/'
+# SERVER_URL = 'http://34.170.226.162/'
 # PORT = ""
 # SERVER_URL = 'https://websocket-test-meh3ibmmpq-uc.a.run.app'
 
@@ -89,7 +89,7 @@ async def get_token(username, password):
     # Check the status code of the response
     if response.status_code == 200:
         # If the request was successful, the JWT token will be in the response data
-        token = response.json()['data']['token']
+        token = str(response.json()['data']['token'])
         user_id = response.json()['data']['id']
         api_data = await get_api_data(user_id, token)
         if api_data is None:

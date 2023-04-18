@@ -1,0 +1,43 @@
+---
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  name: "nginx-1"
+  namespace: "default"
+  labels:
+    app: "nginx-1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "nginx-1"
+  template:
+    metadata:
+      labels:
+        app: "nginx-1"
+    spec:
+      containers:
+      - name: "websocket-test-sha256-1"
+        image: "gcr.io/norse-blade-381022/websocket-test@sha256:8f15f3cf0bc7879eb500df8afecd0778a6a299075f6d2f312e83186af67c0fcb"
+---
+apiVersion: "autoscaling/v2"
+kind: "HorizontalPodAutoscaler"
+metadata:
+  name: "nginx-1-hpa-qety"
+  namespace: "default"
+  labels:
+    app: "nginx-1"
+spec:
+  scaleTargetRef:
+    kind: "Deployment"
+    name: "nginx-1"
+    apiVersion: "apps/v1"
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+  - type: "Resource"
+    resource:
+      name: "cpu"
+      target:
+        type: "Utilization"
+        averageUtilization: 80

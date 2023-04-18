@@ -9,7 +9,7 @@ import jinja2
 from dotenv import load_dotenv
 
 colorize_terminal = False
-PORT = 4204
+PORT = 8080
 SERVER_URL = '0.0.0.0'
 sio = socketio.AsyncServer()
 app = web.Application()
@@ -35,7 +35,7 @@ class UserSession:
         try:
             payload = jwt.decode(
                 jwt=token,
-                key=os.getenv('WP_JWT'),
+                key=str(os.environ['WP_JWT']),
                 algorithms=['HS256'],
                 options={'verify_signature': True}
             )
