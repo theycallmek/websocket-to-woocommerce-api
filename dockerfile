@@ -9,6 +9,6 @@ COPY static /static
 
 #EXPOSE 8080
 #CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "s:app", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--enable-stdio-inheritance", "--log-level", "debug"]
-CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "s:app", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-", "--capture-output", "--reload"]
+CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "s:app", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-", "--capture-output"]
 
 # gunicorn s:my_web_app --bind 0.0.0.0:8080 --worker-class aiohttp.GunicornWebWorker

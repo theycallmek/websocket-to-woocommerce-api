@@ -19,6 +19,7 @@ active_sessions = {}
 connection_log = []
 load_dotenv()
 
+
 class UserSession:
     def __init__(self, sid, token, username, user_id, api_data, ip):
         self.sid = sid
@@ -280,20 +281,36 @@ app.router.add_get('/', index)
 # color console output (windows not supported)
 def c_grey(text: str) -> str:
     return f"\033[90m{text}\033[00m" if colorize_terminal else text
+
+
 def c_red(text: str) -> str:
     return f"\033[91m{text}\033[00m" if colorize_terminal else text
+
+
 def c_green(text: str) -> str:
     return f"\033[92m{text}\033[00m" if colorize_terminal else text
+
+
 def c_yellow(text: str) -> str:
     return f"\033[93m{text}\033[00m" if colorize_terminal else text
+
+
 def c_blue(text: str) -> str:
     return f"\033[94m{text}\033[00m" if colorize_terminal else text
+
+
 def c_purple(text: str) -> str:
     return f"\033[95m{text}\033[00m" if colorize_terminal else text
+
+
 def c_cyan(text: str) -> str:
     return f"\033[96m{text}\033[00m" if colorize_terminal else text
+
+
 def c_white(text: str) -> str:
     return f"\033[97m{text}\033[00m" if colorize_terminal else text
+
+
 def c_default(text: str) -> str:
     return f"\033[99m{text}\033[00m" if colorize_terminal else text
 

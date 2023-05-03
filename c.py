@@ -7,11 +7,10 @@ import json
 import machineid
 from datetime import datetime
 
-PORT = ":8080"
-SERVER_URL = 'http://127.0.0.1'
-# SERVER_URL = 'http://34.170.226.162/'
-# PORT = ""
-# SERVER_URL = 'https://websocket-test-meh3ibmmpq-uc.a.run.app'
+# PORT = ":8080"
+# SERVER_URL = 'http://127.0.0.1'
+SERVER_URL = 'http://34.132.62.177/'
+PORT = ""
 
 sio = socketio.AsyncClient()
 LIC_SESSION_ID = ''
