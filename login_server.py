@@ -1,5 +1,7 @@
 import asyncio
+import os
 import platform
+import json
 from passlib.hash import phpass
 from datetime import datetime, timedelta
 from typing import Optional
@@ -9,21 +11,27 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 import httpx
+import dotenv
 
-
-_username: str = 'socketserver'
-_password: str = 'YwwF7bQcLiTMtwm'
-_host: str = 'swadbot.com'
-_port: int = 3306
-_database: str = 'wordpress'
-
-PG_PASSWORD = '^LOl}EIzU*/Y/-Ko'
-PG_URI = f'postgresql+asyncpg://postgres:{PG_PASSWORD}@34.31.76.97/socket-sessions'
+dotenv.load_dotenv()
+WP_URI = (
+    f'mysql+pymysql://{os.environ["WP_MYSQL_USER"]}'
+    f':{os.environ["WP_MYSQL_PASS"]}'
+    f'@{os.environ["WP_MYSQL_HOST"]}'
+    f':{os.environ["WP_MYSQL_PORT"]}'
+    f'/{os.environ["WP_MYSQL_DB_NAME"]}'
+)
+PG_URI = (
+    f'postgresql+asyncpg://{os.environ["PG_USER"]}'
+    f':{os.environ["PG_PASSWORD"]}'
+    f'@{os.environ["PG_HOST"]}'
+    f'/{os.environ["PG_DB_NAME"]}'
+)
 
 
 def get_wp_mysql_engine() -> engine:
     return create_engine(
-        url=f'mysql+pymysql://{_username}:{_password}@{_host}:{_port}/{_database}',
+        url=WP_URI,
         echo=False
     )
 
@@ -32,8 +40,16 @@ def get_pg_engine() -> AsyncEngine:
     return create_async_engine(url=PG_URI, echo=False)
 
 
-wp_engine = get_wp_mysql_engine()   # Connects to WordPress MySQL
-pg_engine = get_pg_engine()         # Connects to dedicated PostgresSQL
+wp_engine = get_wp_mysql_engine()  # Connects to WordPress MySQL
+pg_engine = get_pg_engine()  # Connects to dedicated PostgresSQL
+
+
+def get_my_ip():
+    with httpx.Client() as client:
+        response = client.get('https://api.ipify.org', timeout=5)
+    if response.status_code == 200:
+        return response.text
+    return '0.0.0.0'
 
 
 class WPUsers(SQLModel, table=True):
@@ -137,8 +153,6 @@ class LicenseResponse(SQLModel):
     activations_remaining: int
 
 
-
-
 def get_wp_user_data(username: str) -> WPUsers:
     with Session(wp_engine) as session:
         # If user enters email as username then use email to find user
@@ -154,7 +168,7 @@ async def get_token_data(username: str, password: str) -> dict | None:
     auth_endpoint = 'https://swadbot.com/wp-json/jwt-auth/v1/token'
     payload = {'username': username, 'password': password}
     async with httpx.AsyncClient() as client:
-        response = await client.post(auth_endpoint, json=payload)
+        response = await client.post(auth_endpoint, json=payload, timeout=10)
     if response.status_code == 200:
         return response.json()['data']
     elif response.status_code == 403:
@@ -175,6 +189,11 @@ app = FastAPI()
 @app.on_event('startup')
 async def startup():
     asyncio.create_task(deactivate_expired_sessions())
+
+
+@app.get('/')
+async def root():
+    return {'message': 'Welcome sensei!'}
 
 
 @app.post('/login', response_model=TokenData)
@@ -198,29 +217,19 @@ async def login(user_login: str, user_pass: str) -> dict | JSONResponse:
 @app.post('/license/{action}')
 async def license_api(action: str, username: str, client_id: int, token: str,
                       session_id: str) -> LicenseResponse | None:
-
     # Possible values for action: 'status', 'activate', 'deactivate'
-
+    if action == 'activate':
+        if not await check_last_create_date(client_id):
+            return LicenseResponse(
+                success=False,
+                message='Rate-limit exceeded. Slow down, sensei.',
+                total_activations=0,
+                activations_remaining=0
+            )
     url = 'https://swadbot.com/'
     api_data = await get_wp_api_resource_data(client_id)
     # print(f'API_DATA: {api_data}')
-    params = {
-        'wc-api': 'wc-am-api',
-        'wc_am_action': action,
-        'api_key': api_data.master_api_key,
-        'instance': session_id,
-        'product_id': api_data.product_id
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url=url,
-            params=params,
-            headers={'Authorization': f'Bearer {token}'}
-        )
-        if response.status_code != 200:
-            return None
-        json_data = response.json()
-        # print(f'JSON_DATA: {json_data}')
+
     client_session = UserSession(
         token=token,
         username=username,
@@ -238,6 +247,25 @@ async def license_api(action: str, username: str, client_id: int, token: str,
         await client_session_update(client_session)
     elif action == 'deactivate':
         await client_session_delete(client_session)
+
+    params = {
+        'wc-api': 'wc-am-api',
+        'wc_am_action': action,
+        'api_key': api_data.master_api_key,
+        'instance': session_id,
+        'product_id': api_data.product_id
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url=url,
+            params=params,
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=10
+        )
+        if response.status_code != 200:
+            return None
+        json_data = response.json()
+        # print(f'JSON_DATA: {json_data}')
 
     ar = LicenseResponse(success=True, message='', total_activations=0, activations_remaining=0)
     if action == 'activate':
@@ -326,31 +354,17 @@ async def get_wp_api_activations_data(activation_ids: list[int]) -> list[WPWCAMA
     return total_results
 
 
-async def test_system():
-    token_data = await get_token_data('test1', 'swadbotpass123')
-    print(f'TOKEN DATA: {token_data}')
-    if token_data is None:
-        return None
-
-    wp_data = get_wp_user_data(token_data['nicename'])
-    print(f'WP DATA: {wp_data}')
-    if wp_data is None:
-        return None
-
-    api_data = await get_wp_api_resource_data(wp_data.ID)
-    print(f'API DATA: {api_data}')
-    if api_data is None:
-        return None
-
-    license_api_data = await license_api(
-        token_data['nicename'],
-        'status',
-        token_data['token'],
-        api_data.master_api_key,
-        'THIS-IS-A-SESSION-KEY',
-        api_data.product_id
-    )
-    print(f'LICENSE API DATA: {license_api_data}')
+async def check_last_create_date(client_id: int) -> bool:
+    async with AsyncSession(pg_engine) as session:
+        statement = select(
+            UserSession).where(
+            UserSession.user_id == client_id).where(
+            UserSession.create_date > datetime.now() - timedelta(seconds=5)
+        )
+        results = await session.execute(statement)
+        for _ in results.scalars():
+            return False
+    return True
 
 
 def run():
@@ -358,8 +372,6 @@ def run():
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-if __name__ == '__main__':
-    run()
-    asyncio.run(test_system())
-else:
+if __name__ != '__main__':
+    # NOT EQUALS!
     run()

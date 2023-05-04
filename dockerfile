@@ -1,14 +1,12 @@
 # Dockerfile
-FROM python:alpine3.17
+FROM python:3.11-slim
+# Allow statements and log messages to immediately appear in the Knative logs
+ENV PYTHONUNBUFFERED True
 COPY requirements.txt /
-RUN pip3 install -r /requirements.txt
+RUN pip3 install --no-cache-dir -r /requirements.txt
 COPY .env /
-COPY s.py .
-COPY templates /templates
-COPY static /static
+COPY login_server.py .
 
-#EXPOSE 8080
-#CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "s:app", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--enable-stdio-inheritance", "--log-level", "debug"]
-CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "s:app", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-", "--capture-output"]
-
+#CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "login_server:app", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-", "--capture-output"]
+CMD gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 2 --timeout 0 -k uvicorn.workers.UvicornWorker login_server:app
 # gunicorn s:my_web_app --bind 0.0.0.0:8080 --worker-class aiohttp.GunicornWebWorker

@@ -1,15 +1,16 @@
+import os
 from typing import Optional
 from datetime import datetime
 from sqlmodel import Field, SQLModel, create_engine, engine
+import dotenv
 
-_username: str = 'socketserver'
-_password: str = 'YwwF7bQcLiTMtwm'
-_host: str = 'swadbot.com'
-_port: int = 3306
-_database: str = 'wordpress'
-
-PG_PASSWORD = "^LOl}EIzU*/Y/-Ko"
-PG_URI = f'postgresql+pg8000://postgres:{PG_PASSWORD}@34.31.76.97/socket-sessions'
+dotenv.load_dotenv()
+PG_URI = (
+    f'postgresql+asyncpg://{os.environ["PG_USER"]}'
+    f':{os.environ["PG_PASSWORD"]}'
+    f'@{os.environ["PG_HOST"]}'
+    f'/{os.environ["PG_DB_NAME"]}'
+)
 
 
 class UserSession(SQLModel, table=True):
@@ -28,7 +29,7 @@ class UserSession(SQLModel, table=True):
 
 def create_db_and_tables():
 
-    def create_db_maker_engine():
+    def create_db_maker_engine() -> engine:
         return create_engine(url=PG_URI, echo=True)
 
     engine_ = create_db_maker_engine()

@@ -1,15 +1,13 @@
-httpx>=0.24.0
-aioconsole>=0.6.1
-PyJWT>=2.6.0
-Jinja2>=3.1.2
-aiohttp-jinja2>=1.5.1
-aiohttp>=3.8.4
-python-socketio>=5.8.0
 gunicorn>=20.1.0
-python-dotenv>=0.0.5
-SQLAlchemy>=2.0.10
-cloud-sql-python-connector>=1.2.2
+httpx>=0.24.0
+PyJWT>=2.6.0
+python-dotenv>=1.0.0
 sqlmodel>=0.0.8
 fastapi>=0.95.1
-
+passlib>=1.7.4
+sqlalchemy<2.0.0
+py-machineid>=0.3.0
+pymysql>=1.0.3
+asyncpg>=0.27.0
+uvicorn>=0.20.0
 # httpx aioconsole PyJWT Jinja2 aiohttp-jinja2 aiohttp python-socketio gunicorn python-dotenv SQLAlchemy cloud-sql-python-connector sqlmodel fastapi
