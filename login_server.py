@@ -419,8 +419,11 @@ async def license_api(
         ar.message = json_data["status_check"]
         ar.total_activations = json_data["data"]["total_activations"]
         ar.activations_remaining = json_data["data"]["activations_remaining"]
-    if action != "status":
-        Logs(username=username, ip=client_ip, message=f"API {action} successful!")
+    if action == "activate":
+        await create_log_entry(username=username, ip=client_ip, message="API activate successful!")
+    elif action == "deactivate":
+        await create_log_entry(username=username, ip=client_ip, message="Logout successful.")
+
     return ar
 
 

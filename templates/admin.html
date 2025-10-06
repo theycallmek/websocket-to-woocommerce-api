@@ -3,35 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Refreshes page every 10 seconds
-    <meta http-equiv="refresh" content="10">-->
+    <!-- Refreshes page every 10 seconds -->
+    <meta http-equiv="refresh" content="10">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>ADMIN CP - SWADBot License API</title>
     <link rel="stylesheet" href="/static/css/dark_mode_style.css"/>
-
-
-
 </head>
 <body>
     <h1>ADMIN CP - SWADBot License API</h1>
-    <h2>Hello, sensei!</h2>
-        {% for session in active_users %}
-            <b>ID:</b> {{ session.id }}<br>
-            <b>TOKEN:</b> {{ session.token[:16] }}...{{ session.token[-43:] }}<br>
-            <b>USERNAME:</b> {{ session.username }}<br>
-            <b>USER ID:</b> {{ session.user_id }}<br>
-            <b>PRODUCT ID:</b>  {{ session.product_id }}<br>
-            <b>MASTER API KEY:</b> {{ session.master_api_key }}<br>
-            <b>THIS SESSION:</b> {{ session.this_session }}<br>
-            <b>IP:</b> {{ session.ip }}<br>
-            <b>CREATE DATE:</b> {{ session.create_date }}<br>
-            <b>LAST ACCESS:</b> {{ session.last_access }}<br>
-            <br>
-        {% endfor %}
-    <h2>LOGS:</h2>
-    {% for log in logs %}
-        [{{ log.create_date }}]<{{ log.ip }}> {{ log.username }}: {{ log.message }}<br>
-    {% endfor %}
-
+     <h2>Hello, sensei!</h2>
+     {% for session in active_users %}
+         <b>ID:</b> {{ session.id }}<br>
+         <b>TOKEN:</b> {{ session.token[:16] }}...{{ session.token[-43:] }}<br>
+         <b>USERNAME:</b> {{ session.username }}<br>
+         <b>USER ID:</b> {{ session.user_id }}<br>
+         <b>PRODUCT ID:</b>  {{ session.product_id }}<br>
+         <b>MASTER API KEY:</b> {{ session.master_api_key }}<br>
+         <b>THIS SESSION:</b> {{ session.this_session }}<br>
+         <b>IP:</b> {{ session.ip }}<br>
+         <b>CREATE DATE:</b> {{ session.create_date }}<br>
+         <b>LAST ACCESS:</b> {{ session.last_access }}<br>
+         <br>
+     {% endfor %}
+     <h2>LOGS:</h2>
+     {% for log in logs %}
+         [{{ log.create_date }}]<{{ log.ip }}> {{ log.username }}: {{ log.message }}<br>
+     {% endfor %}
 </body>
 </html>

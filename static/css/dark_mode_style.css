@@ -1,95 +1,51 @@
-@import 'https://fonts.googleapis.com/css?family=Open+Sans';
+/* static/css/dark_mode_style.css */
 
-* {
-	-webkit-box-sizing: border-box;
-	box-sizing: border-box;
-}
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');
 
 body {
-	font-family: 'Open Sans', sans-serif;
-	line-height: 1.75em;
-	font-size: 12px;
-	background-color: #222;
-	color: #aaa;
-	white-space: nowrap;
+    background-color: #1a1a1a;
+    color: #00ff41; /* Classic green terminal text */
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 2rem;
+    text-shadow: 0 0 5px #00ff41;
 }
 
-.simple-container {
-	max-width: 675px;
-	margin: 0 auto;
-	padding-top: 70px;
-	padding-bottom: 20px;
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    border: 1px solid #00ff41;
+    padding: 1.5rem;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
 }
 
-.simple-print {
-	fill: white;
-	stroke: white;
-}
-.simple-print svg {
-	height: 100%;
-}
-
-.simple-close {
-	color: white;
-	border-color: white;
+h1, h2 {
+    color: #00ff41;
+    text-transform: uppercase;
+    border-bottom: 1px solid #00ff41;
+    padding-bottom: 5px;
+    margin-bottom: 1rem;
 }
 
-.simple-ext-info {
-	border-top: 1px solid #aaa;
+h1::before {
+    content: 'C:\\> ';
 }
 
-p {
-	font-size: 12px;
+h2::before {
+    content: 'RUNNING_PROCESS: ';
 }
 
-h1 {
-	font-size: 30px;
-	line-height: 34px;
+.session-block, .log-block {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px dashed #333;
+    background-color: #111;
 }
 
-h2 {
-	font-size: 20px;
-	line-height: 25px;
-}
-
-h3 {
-	font-size: 16px;
-	line-height: 27px;
-	padding-top: 15px;
-	padding-bottom: 15px;
-	border-bottom: 1px solid #D8D8D8;
-	border-top: 1px solid #D8D8D8;
-}
-
-hr {
-	height: 1px;
-	background-color: #d8d8d8;
-	border: none;
-	width: 100%;
-	margin: 0px;
-}
-
-a[href] {
-	color: #1e8ad6;
-}
-
-a[href]:hover {
-	color: #3ba0e6;
-}
-
-img {
-	max-width: 100%;
-}
-
-li {
-	line-height: 1.5em;
-}
-
-aside, [class *= "sidebar"], [id *= "sidebar"] {
-	max-width: 90%;
-	margin: 0 auto;
-	border: 1px solid lightgrey;
-	padding: 5px 15px;
+.session-block .prompt, .log-block .prompt {
+    color: #00c1ff; /* A different color for prompts */
 }
 
 @media (max-width: 426px) {
