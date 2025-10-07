@@ -13,6 +13,11 @@ URL = 'http://127.0.0.1:8000'
 
 
 def get_session_id():
+    """Generates a unique session ID based on the machine ID and current timestamp.
+
+    Returns:
+        str: A unique session ID string.
+    """
     return f'{machineid.id()}-{str(datetime.now().timestamp()).replace(".", "-")}'
 
 
@@ -20,6 +25,17 @@ this_session = get_session_id()
 
 
 def main():
+    """
+    Main function to simulate a client login and license activation process.
+
+    This function performs the following steps:
+    1. Sends a POST request to the /login endpoint to get a token.
+    2. Sends a POST request to the /license/activate endpoint to activate a license.
+    3. Periodically sends POST requests to the /license/status endpoint to check the license status.
+
+    Returns:
+        bool: False if any of the HTTP requests fail or an error is returned, otherwise completes.
+    """
     print('RUNNING MAIN')
     # POST to /login
     with httpx.Client() as client:
@@ -74,6 +90,7 @@ def main():
     # print(f'LICENSE DEACTIVATE DATA: {license_deactivate_data}')
 
 def run():
+    """Runs the main client simulation function."""
     main()
 
 
