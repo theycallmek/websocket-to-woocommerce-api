@@ -17,31 +17,40 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from passlib.hash import phpass
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.engine import Engine
 from sqlmodel import (
     Field,
     Session,
     SQLModel,
-    engine,
     create_engine,
     select,
     update,
+    func,
     delete,
 )
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 dotenv.load_dotenv()
-
-WP_URI = (
-    f'mysql+mysqlconnector://{os.environ["WP_MYSQL_USER"]}'
-    f':{os.environ["WP_MYSQL_PASS"]}'
-    f'@{os.environ["WP_MYSQL_HOST"]}'
-    f':{os.environ["WP_MYSQL_PORT"]}'
-    f'/{os.environ["WP_MYSQL_DB_NAME"]}'
-)
-print(f'WP_URI: {WP_URI}')
+WP_MYSQL_USER = os.environ["WP_MYSQL_USER"]
+WP_MYSQL_PASS = os.environ["WP_MYSQL_PASS"]
+WP_MYSQL_HOST = os.environ["WP_MYSQL_HOST"]
+WP_MYSQL_PORT = os.environ["WP_MYSQL_PORT"]
+WP_MYSQL_DB_NAME = os.environ["WP_MYSQL_DB_NAME"]
+WP_URI =f'mysql+mysqlconnector://{WP_MYSQL_USER}:{WP_MYSQL_PASS}@{WP_MYSQL_HOST}:{WP_MYSQL_PORT}/{WP_MYSQL_DB_NAME}'
 SQLITE_URI = "sqlite+aiosqlite:///database.db"
+HEARTBEAT_INTERVAL = int(os.environ["HEARTBEAT_INTERVAL"])
+RATE_LIMIT_SECONDS= int(os.environ["RATE_LIMIT_SECONDS"])
+# print(f'WP_URI: {WP_URI}\nSQLITE_URI: {SQLITE_URI}\nStarting server with heartbeat interval of '
+#       f'{HEARTBEAT_INTERVAL} and rate limit of {RATE_LIMIT_SECONDS} seconds.')
+print(
+      f'WP_URI: {WP_URI}\n'
+      f'SQLITE_URI: {SQLITE_URI}\n'
+      f'Hearbeat Interval: {HEARTBEAT_INTERVAL} seconds\n'
+      f'Rate Limit: {RATE_LIMIT_SECONDS} seconds\n'
+)
 
-def get_wp_mysql_engine() -> engine:
+
+def get_wp_mysql_engine() -> Engine:
     return create_engine(url=WP_URI, echo=False)
 
 
@@ -51,6 +60,12 @@ def get_sqlite_engine() -> AsyncEngine:
 
 wp_engine = get_wp_mysql_engine()  # Connects to WordPress MySQL
 sqlite_engine = get_sqlite_engine()  # Connects to dedicated SQLite
+
+
+# --- Rate Limiting Globals ---
+login_attempts = {}
+LOGIN_ATTEMPTS_LIMIT = 5
+LOGIN_ATTEMPTS_WINDOW = timedelta(minutes=1)
 
 
 def get_my_ip():
@@ -142,8 +157,8 @@ class UserSession(SQLModel, table=True):
     master_api_key: str
     this_session: str = Field(index=True)
     ip: Optional[str] = Field(default="0.0.0.0")
-    create_date: Optional[datetime] = Field(default=datetime.now())
-    last_access: Optional[datetime] = Field(default=datetime.now(), index=True)
+    create_date: Optional[datetime] = Field(default_factory=datetime.now)
+    last_access: Optional[datetime] = Field(default_factory=datetime.now, index=True)
 
 
 class TokenData(SQLModel):
@@ -167,7 +182,7 @@ class Logs(SQLModel, table=True):
     username: str
     ip: str
     message: str
-    create_date: Optional[datetime] = Field(default=datetime.now(), index=True)
+    create_date: Optional[datetime] = Field(default_factory=datetime.now, index=True)
 
 async def create_log_entry(username: str, ip: str, message: str):
     """Creates a log entry and saves it to the database asynchronously."""
@@ -258,8 +273,32 @@ async def startup():
 
 @app.get("/admin/{password}", response_class=HTMLResponse)
 async def admin(request: Request, password: str):
-    # logging.debug(f"PASSWORD: {password}")
-    if password == "password":
+    try:
+        client_ip = request.headers["X-Forwarded-For"]
+    except KeyError:
+        client_ip = request.client.host
+
+    # --- Rate Limiting Logic for Admin Page ---
+    now = datetime.now()
+    if client_ip in login_attempts:
+        attempt_info = login_attempts[client_ip]
+        if now - attempt_info["window_start"] > LOGIN_ATTEMPTS_WINDOW:
+            login_attempts[client_ip] = {"count": 1, "window_start": now}
+        elif attempt_info["count"] >= LOGIN_ATTEMPTS_LIMIT:
+            await create_log_entry(username="admin_login", ip=client_ip, message="Admin login failed: Rate limit exceeded.")
+            return templates.TemplateResponse(
+                "index.html",
+                {"request": request, "client_ip": client_ip, "error_message": "Too many attempts. Please wait a minute."},
+            )
+        else:
+            attempt_info["count"] += 1
+    else:
+        login_attempts[client_ip] = {"count": 1, "window_start": now}
+    # --- End Rate Limiting Logic ---
+
+    if password == "password": # Replace "password" with a secure value in production
+        if client_ip in login_attempts:
+            del login_attempts[client_ip] # Clear attempts on success
         active_users = await get_active_users()
         logs = await get_logs_from_db(100)
         return templates.TemplateResponse(
@@ -267,16 +306,39 @@ async def admin(request: Request, password: str):
             {"request": request, "active_users": active_users, "logs": logs},
         )
     else:
-        return JSONResponse(status_code=401, content={"message": "Login failed"})
+        # On failure, construct the error message with the attempt count
+        attempts_made = login_attempts.get(client_ip, {}).get("count", 1)
+        remaining = LOGIN_ATTEMPTS_LIMIT - attempts_made
+        error_msg = f"Incorrect password. {remaining} attempts remaining."
+        await create_log_entry(username="admin_login", ip=client_ip, message="Admin login failed: Incorrect password.")
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "client_ip": client_ip, "error_message": error_msg},
+        )
 
 @app.get("/admin/api/data/{password}", response_class=JSONResponse)
 async def admin_data(password: str):
     """API endpoint to fetch dynamic admin data."""
     if password == "password":
         active_users = await get_active_users()
+        augmented_users = []
+        for user in active_users:
+            # Get total allowed activations from WordPress DB
+            api_data = await get_wp_api_resource_data(user.user_id)
+            total_activations = api_data.activations_purchased if api_data else 0
+
+            # Get currently used activations from local DB
+            currently_active = await count_active_sessions_for_user(user.user_id)
+
+            # Convert the SQLModel object to a dict and add the new fields
+            user_dict = user.dict()
+            user_dict["total_activations"] = total_activations
+            user_dict["activations_remaining"] = total_activations - currently_active
+            augmented_users.append(user_dict)
+
         logs = await get_logs_from_db(100)
         # FastAPI will automatically serialize the SQLModel objects to JSON
-        return {"active_users": active_users, "logs": logs}
+        return {"active_users": augmented_users, "logs": logs}
     else:
         return JSONResponse(status_code=401, content={"message": "Unauthorized"})
 
@@ -297,6 +359,12 @@ async def deactivate_session_admin(session_id: str, payload: DeactivateRequest):
     if not client_session:
         return JSONResponse(status_code=404, content={"message": "Session not found"})
 
+    # Create a specific log entry for the admin action before deactivating.
+    await create_log_entry(
+        username=client_session.username,
+        ip="admin",  # Or get admin IP from request if you add it
+        message=f"Session [{session_id}] deactivated by admin.",
+    )
     await license_api(
         request=None,  # Internal call
         action="deactivate",
@@ -328,11 +396,34 @@ async def login(
     request: Request, user_login: str, user_pass: str
 ) -> dict | JSONResponse:
     logging.debug("LOGIN")
-    data = get_wp_user_data(user_login)
     try:
         client_ip = request.headers["X-Forwarded-For"]
     except KeyError:
         client_ip = request.client.host
+
+    # --- Rate Limiting Logic ---
+    now = datetime.now()
+    if client_ip in login_attempts:
+        attempt_info = login_attempts[client_ip]
+        # If the time window has passed, reset the attempts for this IP
+        if now - attempt_info["window_start"] > LOGIN_ATTEMPTS_WINDOW:
+            login_attempts[client_ip] = {"count": 1, "window_start": now}
+        # If attempts are exceeded within the window, block the request
+        elif attempt_info["count"] >= LOGIN_ATTEMPTS_LIMIT:
+            await create_log_entry(username=user_login, ip=client_ip, message="Login failed: Rate limit exceeded.")
+            return JSONResponse(
+                status_code=429,
+                content={"message": "Too many login attempts. Please wait a minute and try again."}
+            )
+        else:
+            # Otherwise, just increment the attempt count
+            attempt_info["count"] += 1
+    else:
+        # This is the first attempt from this IP in a while
+        login_attempts[client_ip] = {"count": 1, "window_start": now}
+    # --- End Rate Limiting Logic ---
+
+    data = get_wp_user_data(user_login)
     try:
         logging.debug(f"HASH FROM DB: {data.user_pass}")
         verified = verify_pw_hash(user_pass, data.user_pass)
@@ -342,6 +433,9 @@ async def login(
     if verified:
         token_data = await get_token_data(user_login, user_pass)
         if token_data:
+            # On successful login, clear the rate limit counter for this IP
+            if client_ip in login_attempts:
+                del login_attempts[client_ip]
             # Construct the response object to match the TokenData model
             response_data = TokenData(
                 token=token_data["token"],
@@ -380,8 +474,12 @@ async def license_api(
     else:
         # Called internally from timeout or admin deactivate, get IP from the stored session
         async with AsyncSession(sqlite_engine) as session:
+            # This query was incorrect, it should use scalar_one_or_none
             db_session = (await session.execute(select(UserSession).where(UserSession.this_session == session_id))).scalar_one_or_none()
             client_ip = db_session.ip if db_session else "unknown"
+
+    # Get license data from WordPress early for all actions
+    api_data = await get_wp_api_resource_data(client_id)
 
     if action == "activate":
         if not await check_last_create_date(client_id):
@@ -396,8 +494,28 @@ async def license_api(
                 total_activations=0,
                 activations_remaining=0,
             )
+
+        # NEW LOGIC: Check floating license count against the local database
+        if not api_data:
+            return LicenseResponse(success=False, message="No license resource found for user.", total_activations=0, activations_remaining=0)
+
+        total_allowed_activations = api_data.activations_purchased
+        currently_active_sessions = await count_active_sessions_for_user(client_id)
+
+        if currently_active_sessions >= total_allowed_activations:
+            await create_log_entry(
+                username=username,
+                ip=client_ip,
+                message="Activation failed! Maximum number of active sessions reached.",
+            )
+            return LicenseResponse(
+                success=False,
+                message="Maximum number of active sessions reached.",
+                total_activations=total_allowed_activations,
+                activations_remaining=0,
+            )
+
     url = "https://swadbot.com/"
-    api_data = await get_wp_api_resource_data(client_id)
     # logging.debug(f'API_DATA: {api_data}')
     try:
         prod_id = api_data.product_id
@@ -428,59 +546,60 @@ async def license_api(
     if action == "activate":
         await client_session_write(client_session)
     elif action == "status":
-        await client_session_update(client_session)
-    elif action == "deactivate":
-        await client_session_delete(client_session)
+        # For a status check (heartbeat), we only need to update our local session.
+        # We don't need to call the external WooCommerce API, as that would be redundant
+        # and can return misleading "inactive" statuses.
 
-    params = {
-        "wc-api": "wc-am-api",
-        "wc_am_action": action,
-        "api_key": api_data.master_api_key,
-        "instance": session_id,
-        "product_id": api_data.product_id,
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url=url,
-            params=params,
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10,
-        )
-        if response.status_code != 200:
-            await create_log_entry(
-                username=username,
-                ip=client_ip,
-                message=f"API {action} failed! Error {response.status_code}",
+        # CRITICAL FIX: First, verify the session actually exists in our database.
+        async with AsyncSession(sqlite_engine) as session:
+            statement = select(UserSession).where(UserSession.this_session == client_session.this_session)
+            existing_session = (await session.execute(statement)).scalar_one_or_none()
+
+        if not existing_session:
+            await create_log_entry(username=username, ip=client_ip, message="Heartbeat failed: Session not found.")
+            return LicenseResponse(
+                success=False,
+                message="Session not found or has been deactivated.",
+                total_activations=0,
+                activations_remaining=0,
             )
-            return None
-        json_data = response.json()
+
+        await client_session_update(client_session) # Update the timestamp
+
+        # Calculate the correct floating license count for the status response
+        total_allowed = api_data.activations_purchased if api_data else 0
+        currently_active = await count_active_sessions_for_user(client_id)
+
+        return LicenseResponse(
+            success=True,
+            message="Session heartbeat updated.",
+            total_activations=total_allowed,
+            activations_remaining=total_allowed - currently_active,
+        )
+    elif action == "deactivate":
+        pass # Deletion will happen after the external API call.
 
     ar = LicenseResponse(
         success=True, message="", total_activations=0, activations_remaining=0
     )
     if action == "activate":
-        ar.success = json_data["success"]
-        if "message" in json_data:
-            ar.message = json_data["message"]
-        elif "error" in json_data:
-            ar.message = json_data["error"]
-        if json_data["success"]:
-            ar.total_activations = json_data["data"]["total_activations"]
-            ar.activations_remaining = json_data["data"]["activations_remaining"]
-        else:
-            ar.total_activations = 0
-            ar.activations_remaining = 0
-    elif action == "status":
-        ar.success = json_data["data"]["activated"]
-        ar.message = json_data["status_check"]
-        ar.total_activations = json_data["data"]["total_activations"]
-        ar.activations_remaining = json_data["data"]["activations_remaining"]
-    if action == "activate":
-        await create_log_entry(username=username, ip=client_ip, message="Session activated by user.")
+        # For a floating license, a successful internal check is all that's needed.
+        # We no longer need to check the response from the external API.
+        ar.success = True
+        ar.total_activations = api_data.activations_purchased
+        # The new remaining count is total minus the sessions that are now active (including this new one)
+        ar.activations_remaining = api_data.activations_purchased - (await count_active_sessions_for_user(client_id))
+        ar.message = f"Activation successful. {ar.activations_remaining} of {ar.total_activations} floating licenses remaining."
+        log_message = f"Session [{session_id}] activated by user. {ar.activations_remaining}/{ar.total_activations} remaining."
+        await create_log_entry(username=username, ip=client_ip, message=log_message)
     elif action == "deactivate":
         # Check if the request came from the timeout function (no request object) or a user
-        log_message = "Session deactivated due to timeout." if request is None else "Session deactivated by user."
+        # Admin deactivations are logged in their own endpoint, so `request is None` here always means a timeout.
+        log_message = f"Session [{session_id}] deactivated due to timeout." if request is None \
+            else f"Session [{session_id}] deactivated by user."
         await create_log_entry(username=username, ip=client_ip, message=log_message)
+        # Now that all operations are complete, delete the session from the local DB.
+        await client_session_delete(client_session)
 
     return ar
 
@@ -504,7 +623,7 @@ async def deactivate_expired_sessions() -> None:
                     session_id=client_session.this_session,
                 )
                 logging.debug(f"DEACTIVATED SESSION: {client_session}")
-        await asyncio.sleep(5)
+        await asyncio.sleep(HEARTBEAT_INTERVAL)
 
 
 async def client_session_delete(client_session: UserSession) -> None:
@@ -514,7 +633,7 @@ async def client_session_delete(client_session: UserSession) -> None:
         )
         await session.execute(statement)
         await session.commit()
-    # logging.debug(f'DELETED SESSION FROM DB: {client_session}')
+    logging.debug(f'DELETED SESSION FROM DB: {client_session}')
 
 
 async def client_session_update(client_session: UserSession) -> None:
@@ -526,7 +645,7 @@ async def client_session_update(client_session: UserSession) -> None:
         )
         await session.execute(statement)
         await session.commit()
-    # logging.debug(f'UPDATED SESSION IN DB: {client_session}')
+    logging.debug(f'UPDATED SESSION IN DB: {client_session}')
 
 
 async def client_session_write(client_session: UserSession) -> None:
@@ -534,7 +653,7 @@ async def client_session_write(client_session: UserSession) -> None:
         session.add(client_session)
         await session.commit()
         await session.refresh(client_session)
-    # logging.debug(f'WROTE SESSION TO DB: {client_session}')
+    logging.debug(f'WROTE SESSION TO DB: {client_session}')
 
 
 async def get_wp_api_resource_data(user_id: int) -> WPWCAMApiResource:
@@ -543,7 +662,7 @@ async def get_wp_api_resource_data(user_id: int) -> WPWCAMApiResource:
             WPWCAMApiResource.user_id == user_id
         )
         results = session.exec(statement).first()
-    # logging.debug(f'F_RESULTS: {results}')
+    logging.debug(f'F_RESULTS: {results}')
     return results
 
 
@@ -558,7 +677,7 @@ async def get_wp_api_activations_data(
             )
             results = session.exec(statement).first()
             total_results.append(results)
-    # logging.debug(f'TOTAL_RESULTS: {total_results}')
+    logging.debug(f'TOTAL_RESULTS: {total_results}')
     return total_results
 
 
@@ -567,7 +686,7 @@ async def check_last_create_date(client_id: int) -> bool:
         statement = (
             select(UserSession)
             .where(UserSession.user_id == client_id)
-            .where(UserSession.create_date > datetime.now() - timedelta(seconds=5))
+            .where(UserSession.create_date > datetime.now() - timedelta(seconds=RATE_LIMIT_SECONDS))
         )
         results = await session.execute(statement)
         for _ in results.scalars():
@@ -593,6 +712,13 @@ async def get_logs_from_db(limit: int) -> list[Logs]:
         for log in results.scalars():
             final_list.append(log)
         return final_list
+
+async def count_active_sessions_for_user(user_id: int) -> int:
+    """Counts the number of active sessions for a specific user in the local DB."""
+    async with AsyncSession(sqlite_engine) as session:
+        statement = select(func.count(UserSession.id)).where(UserSession.user_id == user_id)
+        count = (await session.execute(statement)).scalar_one()
+        return count
 
 
 def run():

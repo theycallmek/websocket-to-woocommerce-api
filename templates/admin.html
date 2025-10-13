@@ -113,6 +113,10 @@
             font-size: 0.85rem;
             margin-bottom: 0.75rem;
         }
+        .card .info-group .separator {
+            color: #000000;
+            margin: 0 0.25rem;
+        }
         .card .key-group p {
             font-size: 0.8rem;
             margin: 0.5rem 0;
@@ -180,9 +184,26 @@
             margin-bottom: 0.2rem;
             border-radius: 4px;
             font-family: "Courier New", Courier, monospace;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             line-height: 1.4;
-            white-space: nowrap;
+            white-space: normal;
+            overflow-wrap: break-word;
+            padding-left: 1.5em; /* The size of our hanging indent */
+            text-indent: -1.5em; /* Pulls the first line back to the start */
+        }
+
+        /* Log Color-Coding */
+        .log-entry.log-success {
+            color: #8cc290; /* Soft green */
+            border-left-color: #4CAF50;
+        }
+        .log-entry.log-error {
+            color: #e57373; /* Soft red */
+            border-left-color: #F44336;
+        }
+        .log-entry.log-warning {
+            color: #ffd54f; /* Soft yellow */
+            border-left-color: #FFC107;
         }
 
         /* Mobile Responsive Styles */
@@ -261,8 +282,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>ADMIN CP - SWADBot License API</h1>
-        <h2>Hello, sensei! (Page auto-refreshes every 10s)</h2>
+        <h1>Admin CP | FastAPI WordPress Auth & License Middleware</h1>
         <div class="main-content">
             <div class="panel left-panel">
                 <div class="panel-content">
@@ -309,6 +329,7 @@
                 });
             }
 
+
             // --- Data Fetching and Rendering ---
             const getPasswordFromURL = () => {
                 const pathParts = window.location.pathname.split('/');
@@ -338,9 +359,10 @@
                             <span class="ip">${session.ip}</span>
                         </div>
                         <div class="info-group">
-                            <span><b>DB ID:</b> ${session.id}</span>
-                            <span><b>User ID:</b> ${session.user_id}</span>
-                            <span><b>Product ID:</b> ${session.product_id}</span>
+                            <span><b>DB ID:</b> ${session.id}</span><span class="separator">|</span>
+                            <span><b>User ID:</b> ${session.user_id}</span><span class="separator">|</span>
+                            <span><b>Product ID:</b> ${session.product_id}</span><span class="separator">|</span>
+                            <span><b>Licenses:</b> ${session.activations_remaining} / ${session.total_activations}</span>
                         </div>
                         <div class="key-group">
                             <p><b>Session:</b> <code>${session.this_session}</code></p>
@@ -371,11 +393,21 @@
                 logs.forEach(log => {
                     const logEntry = document.createElement('div');
                     logEntry.className = 'log-entry';
+
+                    // Add color-coding classes based on the log message content
+                    const message = log.message.toLowerCase();
+                    if (message.includes('activated by user') || message.includes('successful')) {
+                        logEntry.classList.add('log-success');
+                    } else if (message.includes('failed') || message.includes('not found') || message.includes('timeout')) {
+                        logEntry.classList.add('log-error');
+                    } else if (message.includes('deactivated')) {
+                        logEntry.classList.add('log-warning');
+                    }
+
                     // Format the timestamp: from "2025-10-11T18:29:31.946233" to "10-11 18:29:31.94"
                     const formattedDate = log.create_date.substring(5, 10) + ' ' + log.create_date.substring(11, 22);
                     // Use textContent to prevent XSS from log messages
-                    const text = `[${formattedDate}] &lt;${log.ip}&gt; ${log.username}: ${log.message}`;
-                    logEntry.innerHTML = text;
+                    logEntry.innerHTML = `[${formattedDate}] &lt;${log.ip}&gt; ${log.username}: ${log.message}`;
                     logsContainer.appendChild(logEntry);
                 });
 

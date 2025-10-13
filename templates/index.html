@@ -77,6 +77,9 @@
 <body>
     <div class="container">
         <h1>Hello, {{ client_ip }}!</h1>
+        {% if error_message %}
+            <p style="color: #e57373; font-weight: bold;">{{ error_message }}</p>
+        {% endif %}
         <p>Please enter the password to continue.</p>
 
         <form id="admin-form">

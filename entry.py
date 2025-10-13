@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # Add a file handler to the logging configuration
     LOGGING_CONFIG["handlers"]["file"] = {
         "formatter": "default",
-        "class": "logging.handlers.RotatingFileHandler",
+        "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
         "filename": LOG_FILE,
         "maxBytes": 1024 * 1024 * 5,  # 5 MB
         "backupCount": 3,

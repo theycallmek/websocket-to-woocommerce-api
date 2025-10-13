@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import datetime
 import dotenv
@@ -9,8 +10,7 @@ dotenv.load_dotenv()
 
 USERNAME = "test1"
 PASSWORD = "swadbotpass123"
-# This is the password required by the JWT plugin
-# APP_PASSWORD = "ZgKzpENVHMBnjouSDPNRmP6o"
+HEARTBEAT_INTERVAL = int(os.environ["HEARTBEAT_INTERVAL"])
 
 #URL = "https://fastapi-license-server-meh3ibmmpq-uc.a.run.app"
 URL = 'http://127.0.0.1:8000'
@@ -32,7 +32,7 @@ this_session = get_session_id()
 client_ip = get_my_ip()
 
 def main():
-    print("RUNNING MAIN")
+    print("RUNNING TEST CLIENT LOGIN SCRIPT")
     # POST to /login
     with httpx.Client(timeout=20) as client:
         response = client.post(
@@ -67,7 +67,7 @@ def main():
     r = 10
     for i in range(r):
         print(f"==============\nPASS: {i + 1}/{r}")
-        time.sleep(15)
+        time.sleep(HEARTBEAT_INTERVAL/2)
         # POST to /license/status
         with httpx.Client() as client:
             # params["token"] = params["token"] + "0"
@@ -84,17 +84,16 @@ def main():
             return False
         print(f"LICENSE STATUS DATA: {license_status_data}")
         if i >= 9:
-            print("DONE!")
-
+            print("DONE! Deactivating license gracefully.")
+    # return None
     # time.sleep(5)
-    #
-    # with httpx.Client() as client:
-    #     response = client.post(url=f'{URL}/license/deactivate', params=params)
-    # if response.status_code != 200:
-    #     print('WRONG STATUS CODE (/license/deactivate)')
-    #     return False
-    # license_deactivate_data = response.json()
-    # print(f'LICENSE DEACTIVATE DATA: {license_deactivate_data}')
+    with httpx.Client() as client:
+        response = client.post(url=f'{URL}/license/deactivate', params=params)
+    if response.status_code != 200:
+        print('WRONG STATUS CODE (/license/deactivate)')
+        return False
+    license_deactivate_data = response.json()
+    print(f'LICENSE DEACTIVATE DATA: {license_deactivate_data}')
 
 
 def run():
