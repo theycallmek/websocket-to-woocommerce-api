@@ -10,8 +10,8 @@ import hashlib
 import base64
 import bcrypt
 import dotenv
-import httpx
-from fastapi import FastAPI, Request
+import httpx, typing
+from fastapi import FastAPI, Request, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -473,6 +473,43 @@ async def admin(request: Request, password: str):
     else:
         return JSONResponse(status_code=401, content={"message": "Login failed"})
 
+@app.get("/admin/api/data/{password}", response_class=JSONResponse)
+async def admin_data(password: str):
+    """API endpoint to fetch dynamic admin data."""
+    if password == "password":
+        active_users = await get_active_users()
+        logs = await get_logs_from_db(100)
+        # FastAPI will automatically serialize the SQLModel objects to JSON
+        return {"active_users": active_users, "logs": logs}
+    else:
+        return JSONResponse(status_code=401, content={"message": "Unauthorized"})
+
+class DeactivateRequest(SQLModel):
+    password: str
+
+@app.post("/admin/api/deactivate/{session_id}")
+async def deactivate_session_admin(session_id: str, payload: DeactivateRequest):
+    """Allows an admin to manually deactivate a specific session."""
+    if payload.password != "password":
+        return JSONResponse(status_code=401, content={"message": "Unauthorized"})
+
+    # Find the session by its unique string ID ('this_session'), not the integer primary key ('id')
+    async with AsyncSession(pg_engine) as session:
+        statement = select(UserSession).where(UserSession.this_session == session_id)
+        client_session = (await session.execute(statement)).scalar_one_or_none()
+
+    if not client_session:
+        return JSONResponse(status_code=404, content={"message": "Session not found"})
+
+    await license_api(
+        request=None,  # Internal call
+        action="deactivate",
+        username=client_session.username,
+        client_id=client_session.user_id,
+        token=client_session.token,
+        session_id=client_session.this_session,
+    )
+    return JSONResponse(status_code=200, content={"message": "Session deactivated successfully"})
 
 @app.get("/")
 async def root(request: Request):
@@ -493,7 +530,11 @@ async def root(request: Request):
     except KeyError:
         client_ip = request.client.host
         logging.debug(f"Caught KeyError: client ip={client_ip}")
-    return {"message": "Welcome sensei!", "ip": client_ip}
+    # return {"message": "Welcome sensei!", "ip": client_ip}
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, 'client_ip': client_ip},
+    )
 
 
 @app.post("/login", response_model=TokenData)
@@ -538,12 +579,15 @@ async def login(
                 user_nicename=token_data["user_nicename"],
                 user_display_name=token_data["user_display_name"],
             )
-            await create_log_entry(username=user_login, ip=client_ip, message="Login successful!")
+            # await create_log_entry(username=user_login, ip=client_ip, message="Login successful!")
             return response_data
 
     # This block is reached if verification fails or if token fetching fails
     await create_log_entry(username=user_login, ip=client_ip, message="Login failed!")
     return JSONResponse(status_code=401, content={"message": "Login failed"})
+
+async def get_request_or_none(request: Request) -> typing.Optional[Request]:
+    return request
 
 @app.post("/license/{action}")
 async def license_api(
@@ -552,7 +596,8 @@ async def license_api(
     client_id: int,
     token: str,
     session_id: str,
-    client_ip: str,
+    # Use Depends to correctly handle the optional Request dependency
+    request: typing.Optional[Request] = Depends(get_request_or_none),
 ) -> LicenseResponse | None:
     """Handles license activation, deactivation, and status checks.
 
@@ -572,6 +617,18 @@ async def license_api(
                                 API call, or None if a critical error occurs.
     """
     # Possible values for action: 'status', 'activate', 'deactivate'
+    if request is not None:
+        # Called from a user request, get IP from headers
+        try:
+            client_ip = request.headers["X-Forwarded-For"]
+        except KeyError:
+            client_ip = request.client.host
+    else:
+        # Called internally from timeout or admin deactivate, get IP from the stored session
+        async with AsyncSession(pg_engine) as session:
+            db_session = (await session.execute(select(UserSession).where(UserSession.this_session == session_id))).scalar_one_or_none()
+            client_ip = db_session.ip if db_session else "unknown"
+
     if action == "activate":
         if not await check_last_create_date(client_id):
             await create_log_entry(
@@ -643,7 +700,6 @@ async def license_api(
             )
             return None
         json_data = response.json()
-        # logging.debug(f'JSON_DATA: {json_data}')
 
     ar = LicenseResponse(
         success=True, message="", total_activations=0, activations_remaining=0
@@ -666,9 +722,11 @@ async def license_api(
         ar.total_activations = json_data["data"]["total_activations"]
         ar.activations_remaining = json_data["data"]["activations_remaining"]
     if action == "activate":
-        await create_log_entry(username=username, ip=client_ip, message="API activate successful!")
+        await create_log_entry(username=username, ip=client_ip, message="Session activated by user.")
     elif action == "deactivate":
-        await create_log_entry(username=username, ip=client_ip, message="Logout successful.")
+        # Check if the request came from the timeout function (no request object) or a user
+        log_message = "Session deactivated due to timeout." if request is None else "Session deactivated by user."
+        await create_log_entry(username=username, ip=client_ip, message=log_message)
 
     return ar
 
@@ -687,16 +745,17 @@ async def deactivate_expired_sessions() -> None:
             )
             results = await session.execute(statement)
             for client_session in results.scalars():
+                # Re-instating the call to license_api is crucial. It handles both
+                # the external API call and the local database cleanup.
                 await license_api(
+                    request=None,  # Pass None to indicate an internal/timeout call
                     action="deactivate",
                     username=client_session.username,
                     client_id=client_session.user_id,
                     token=client_session.token,
                     session_id=client_session.this_session,
-                    client_ip=client_session.ip,
                 )
                 logging.debug(f"DEACTIVATED SESSION: {client_session}")
-                await client_session_delete(client_session)
         await asyncio.sleep(5)
 
 

@@ -107,7 +107,7 @@ def main():
             return False
         license_status_data = response.json()
         if license_status_data["success"] is False:
-            print(f'ACTIVATION FAILED!: {license_status_data["error"]}')
+            print(f'ACTIVATION FAILED!: {license_status_data}')
             return False
         print(f"LICENSE STATUS DATA: {license_status_data}")
         if i >= 9:
