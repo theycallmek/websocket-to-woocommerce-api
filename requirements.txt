@@ -1,3 +1,4 @@
+bcrypt
 gunicorn>=20.1.0
 httpx>=0.24.0
 PyJWT>=2.6.0
@@ -10,4 +11,5 @@ py-machineid>=0.3.0
 pymysql>=1.0.3
 asyncpg>=0.27.0
 uvicorn>=0.20.0
+jinja2>=3.1.2
 # httpx aioconsole PyJWT Jinja2 aiohttp-jinja2 aiohttp python-socketio gunicorn python-dotenv SQLAlchemy cloud-sql-python-connector sqlmodel fastapi

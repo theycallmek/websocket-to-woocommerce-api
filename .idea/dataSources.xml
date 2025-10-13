@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="socket-sessions@34.31.76.97" uuid="541980e2-407b-4026-8eba-d57d1e9ebce3">
+    <data-source source="LOCAL" name="socket-sessions@34.86.211.189" uuid="541980e2-407b-4026-8eba-d57d1e9ebce3">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://34.31.76.97:5432/socket-sessions</jdbc-url>
+      <jdbc-url>jdbc:postgresql://35.226.155.147:5432/socket-sessions</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
     <data-source source="LOCAL" name="database.db" uuid="814203f4-6583-4303-9ecc-0171f8f46935">
@@ -20,7 +20,17 @@
       <synchronize>true</synchronize>
       <remarks>LIVE PRODUCTION database for swadbot.com. DO NOT FUCK AROUND!</remarks>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql://swadbot.com:3306/wordpress</jdbc-url>
+      <jdbc-url>jdbc:mysql://34.106.244.3:3306/wordpress</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="swadbot.com mariadb" uuid="578d73ad-2cd3-4012-9c67-8dde82f7152a">
+      <driver-ref>mariadb</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.mariadb.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mariadb://swadbot.com:3306/</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="database.introspection.mysql.dbe5060" value="true" />
+      </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

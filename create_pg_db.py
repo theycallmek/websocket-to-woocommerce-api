@@ -6,7 +6,7 @@ import dotenv
 
 dotenv.load_dotenv()
 PG_URI = (
-    f'postgresql+asyncpg://{os.environ["PG_USER"]}'
+    f'postgresql+pg8000://{os.environ["PG_USER"]}'
     f':{os.environ["PG_PASSWORD"]}'
     f'@{os.environ["PG_HOST"]}'
     f'/{os.environ["PG_DB_NAME"]}'
@@ -22,9 +22,18 @@ class UserSession(SQLModel, table=True):
     product_id: int
     master_api_key: str
     this_session: str = Field(index=True)
-    ip: Optional[str] = Field(default='0')
+    ip: Optional[str] = Field(default='0.0.0.0')
     create_date: Optional[datetime] = Field(default=datetime.now())
     last_access: Optional[datetime] = Field(default=datetime.now(), index=True)
+
+
+class Logs(SQLModel, table=True):
+    __tablename__: str = 'logs'
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str
+    ip: str
+    message: str
+    create_date: Optional[datetime] = Field(default=datetime.now(), index=True)
 
 
 def create_db_and_tables():

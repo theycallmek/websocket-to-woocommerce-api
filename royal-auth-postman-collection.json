@@ -1,0 +1,111 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-4a3b-8c7d-1e2f3a4b5c6d",
+		"name": "RoyalAuth WordPress Plugin",
+		"description": "A collection of API endpoints for the RoyalAuth WordPress plugin.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Check License Status",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"api_key\": \"{{apiKey}}\",\n    \"api_secret\": \"{{apiSecret}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/license/status",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"license",
+						"status"
+					]
+				},
+				"description": "Checks the current status of a license/application."
+			},
+			"response": []
+		},
+		{
+			"name": "Activate License",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"api_key\": \"{{apiKey}}\",\n    \"api_secret\": \"{{apiSecret}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/license/activate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"license",
+						"activate"
+					]
+				},
+				"description": "Activates a license/application."
+			},
+			"response": []
+		},
+		{
+			"name": "Deactivate License",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"api_key\": \"{{apiKey}}\",\n    \"api_secret\": \"{{apiSecret}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/license/deactivate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"license",
+						"deactivate"
+					]
+				},
+				"description": "Deactivates a license/application."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://your-wordpress-site.com/wp-json/royalauth/v1",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "YOUR_APP_API_KEY",
+			"type": "string"
+		},
+		{
+			"key": "apiSecret",
+			"value": "YOUR_APP_API_SECRET",
+			"type": "string"
+		}
+	]
+}

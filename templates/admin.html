@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADMIN CP - SWADBot License API</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #d4d4d4;
+            --primary-color: #007acc;
+            --card-bg: #252526;
+            --border-color: #3c3c3c;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 4rem);
+        }
+
+        .main-content {
+            display: flex;
+            gap: 2rem;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        #toggle-logs-btn {
+            display: none; /* Hidden by default */
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 100;
+            padding: 0.75rem 1.25rem;
+        }
+
+        .panel {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 1rem; /* For scrollbar spacing */
+        }
+
+        h1, h2 {
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .panel h2 {
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-color);
+            margin-top: 0;
+            padding-top: 1rem; /* Add some space above the sticky header */
+            z-index: 1;
+        }
+
+        .grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            max-width: 800px; /* Give the column a max width */
+            margin: 0 auto; /* Center the column within the panel */
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 100%; /* Let the card take up the available width */
+            padding: 1rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            word-wrap: break-word;
+            box-sizing: border-box; /* Include padding in the element's total width */
+        }
+
+        /* New Card Styling */
+        .card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .card .username {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        .card .ip {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+        .card .info-group {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+        .card .key-group p {
+            font-size: 0.8rem;
+            margin: 0.5rem 0;
+            display: flex; /* Use flexbox for alignment */
+            align-items: baseline;
+        }
+        .card .key-group p b {
+            flex-shrink: 0; /* Prevent the label from shrinking */
+            margin-right: 0.5rem;
+        }
+        .card .key-group p code {
+            white-space: nowrap; /* Only apply nowrap to the code element */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0; /* Allow the element to shrink below its content size */
+        }
+        .card .key-group code {
+            color: #a9a9a9;
+            background-color: var(--bg-color);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .card .card-footer {
+            margin-top: 0.75rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        .card .card-actions {
+            margin-top: 1rem;
+            text-align: right;
+        }
+
+        .deactivate-btn {
+            background-color: #da3633; /* A reddish color for destructive actions */
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background-color 0.2s;
+        }
+
+        .deactivate-btn:hover {
+            background-color: #b92521;
+        }
+
+        .card p {
+            margin: 0.5rem 0;
+            line-height: 1.5;
+        }
+
+        .card b {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .log-entry {
+            background-color: var(--card-bg);
+            border-left: 2px solid var(--primary-color);
+            padding: 0.25rem 0.75rem;
+            margin-bottom: 0.2rem;
+            border-radius: 4px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .container {
+                height: calc(100vh - 2rem);
+                padding: 0;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            h2 {
+                font-size: 1.1rem;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .main-content {
+                position: relative;
+                flex-direction: row; /* Keep it as row for sliding */
+                gap: 0;
+            }
+
+            .panel {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                transition: transform 0.3s ease-in-out;
+                padding-right: 0; /* Remove padding on mobile */
+            }
+
+            .grid {
+                align-items: stretch; /* Let cards fill width on mobile */
+            }
+
+            .panel-content {
+                padding: 0 1rem; /* Add horizontal padding to content */
+            }
+
+            .left-panel {
+                transform: translateX(0);
+            }
+
+            .right-panel {
+                transform: translateX(100%);
+            }
+
+            .main-content.show-logs .left-panel {
+                transform: translateX(-100%);
+            }
+
+            .main-content.show-logs .right-panel {
+                transform: translateX(0);
+            }
+
+            #toggle-logs-btn {
+                display: block; /* Show button on mobile */
+                background-color: var(--primary-color);
+                color: white;
+                border: none;
+                border-radius: 50px;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ADMIN CP - SWADBot License API</h1>
+        <h2>Hello, sensei! (Page auto-refreshes every 10s)</h2>
+        <div class="main-content">
+            <div class="panel left-panel">
+                <div class="panel-content">
+                    <h2>ACTIVE USERS ({{ active_users|length }})</h2>
+                    <div class="grid">
+                        {% for session in active_users %}
+                            {# This is just a placeholder for the initial load. #}
+                            {# The content will be populated by JavaScript. #}
+                        {% else %}
+                            <p>No active users.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="panel right-panel">
+                <div class="panel-content">
+                    <h2>LOGS</h2>
+                    <div>
+                        {% for log in logs %}
+                            <div class="log-entry">
+                                [{{ log.create_date }}] &lt;{{ log.ip }}&gt; {{ log.username }}: {{ log.message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button id="toggle-logs-btn">Toggle Logs</button>
+    <script>
+        window.addEventListener('load', () => {
+            // --- DOM Elements ---
+            const toggleBtn = document.getElementById('toggle-logs-btn');
+            const mainContent = document.querySelector('.main-content');
+            const usersGrid = document.querySelector('.left-panel .grid');
+            const logsContainer = document.querySelector('.right-panel .panel-content div');
+            const usersHeader = document.querySelector('.left-panel h2');
+            const logsPanel = document.querySelector('.panel.right-panel');
+
+            // --- Mobile UI Toggle ---
+            if (toggleBtn && mainContent) {
+                toggleBtn.addEventListener('click', () => {
+                    mainContent.classList.toggle('show-logs');
+                });
+            }
+
+            // --- Data Fetching and Rendering ---
+            const getPasswordFromURL = () => {
+                const pathParts = window.location.pathname.split('/');
+                return pathParts[pathParts.length - 1];
+            };
+
+            const renderUsers = (users) => {
+                // Clear the grid and update the header
+                usersGrid.innerHTML = '';
+                usersHeader.textContent = `ACTIVE USERS (${users.length})`;
+
+                if (users.length === 0) {
+                    usersGrid.innerHTML = '<p>No active users.</p>';
+                    return;
+                }
+
+                users.forEach(session => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    // Format timestamps for display
+                    const createdDate = session.create_date.substring(5, 10) + ' ' + session.create_date.substring(11, 22);
+                    const lastAccessDate = session.last_access.substring(5, 10) + ' ' + session.last_access.substring(11, 22);
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="username">${session.username}</span>
+                            <span class="ip">${session.ip}</span>
+                        </div>
+                        <div class="info-group">
+                            <span><b>DB ID:</b> ${session.id}</span>
+                            <span><b>User ID:</b> ${session.user_id}</span>
+                            <span><b>Product ID:</b> ${session.product_id}</span>
+                        </div>
+                        <div class="key-group">
+                            <p><b>Session:</b> <code>${session.this_session}</code></p>
+                            <p><b>Token:</b> <code>${session.token.substring(0, 12)}...${session.token.slice(-12)}</code></p>
+                            <p><b>Master Key:</b> <code>${session.master_api_key}</code></p>
+                        </div>
+                        <div class="card-footer">
+                            <span><b>Created:</b> ${createdDate} | </span>
+                            <span><b>Last Access:</b> ${lastAccessDate}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="deactivate-btn" data-session-id="${session.this_session}">Deactivate</button>
+                        </div>
+                    `;
+                    usersGrid.appendChild(card);
+                });
+            };
+
+
+            const renderLogs = (logs) => {
+                // Check if user is scrolled to the bottom before adding new logs
+                const isScrolledToBottom = logsPanel.scrollHeight - logsPanel.clientHeight <= logsPanel.scrollTop + 1;
+
+                logsContainer.innerHTML = ''; // Clear existing logs
+
+                // Reverse the array so the newest logs appear at the bottom
+                logs.reverse();
+                logs.forEach(log => {
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'log-entry';
+                    // Format the timestamp: from "2025-10-11T18:29:31.946233" to "10-11 18:29:31.94"
+                    const formattedDate = log.create_date.substring(5, 10) + ' ' + log.create_date.substring(11, 22);
+                    // Use textContent to prevent XSS from log messages
+                    const text = `[${formattedDate}] &lt;${log.ip}&gt; ${log.username}: ${log.message}`;
+                    logEntry.innerHTML = text;
+                    logsContainer.appendChild(logEntry);
+                });
+
+                // Scroll to bottom only if they were already at the bottom
+                if (isScrolledToBottom) {
+                    logsPanel.scrollTop = logsPanel.scrollHeight;
+                }
+            };
+
+            const deactivateSession = async (sessionId) => {
+                const password = getPasswordFromURL();
+                try {
+                    const response = await fetch(`/admin/api/deactivate/${sessionId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: password })
+                    });
+
+                    if (response.ok) {
+                        // Immediately fetch new data to reflect the change
+                        await fetchData();
+                    } else {
+                        const errorData = await response.json();
+                        alert(`Failed to deactivate session: ${errorData.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error deactivating session:', error);
+                    alert('A client-side error occurred while deactivating the session.');
+                }
+            };
+
+            // Use event delegation for deactivate buttons
+            usersGrid.addEventListener('click', (event) => {
+                if (event.target.classList.contains('deactivate-btn')) {
+                    const sessionId = event.target.dataset.sessionId;
+                    if (confirm(`Are you sure you want to deactivate session: ${sessionId}?`)) {
+                        deactivateSession(sessionId);
+                    }
+                }
+            });
+
+            const fetchData = async () => {
+                const password = getPasswordFromURL();
+                try {
+                    const response = await fetch(`/admin/api/data/${password}`);
+                    if (!response.ok) {
+                        console.error('Failed to fetch admin data. Status:', response.status);
+                        // Optional: Stop interval if auth fails
+                        if (response.status === 401 || response.status === 404) {
+                             clearInterval(updateInterval);
+                             document.body.innerHTML = '<h1>Session expired or unauthorized. Please log in again.</h1>';
+                        }
+                        return;
+                    }
+                    const data = await response.json();
+                    renderUsers(data.active_users);
+                    renderLogs(data.logs);
+                } catch (error) {
+                    console.error('Error fetching admin data:', error);
+                }
+            };
+
+            // --- Initial Load and Interval ---
+            // Initial scroll to bottom for logs
+            logsPanel.scrollTop = logsPanel.scrollHeight;
+
+            // Fetch data immediately on load, then set an interval
+            fetchData();
+            const updateInterval = setInterval(fetchData, 5000); // Update every 5 seconds
+        });
+    </script>
+</body>
+</html>

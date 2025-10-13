@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 
 colorize_terminal = False
 PORT = 8080
-SERVER_URL = '0.0.0.0'
+SERVER_URL = "0.0.0.0"
 sio = socketio.AsyncServer()
 app = web.Application()
 sio.attach(app)
-aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader('templates'))
+aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader("templates"))
 active_sessions = {}
 connection_log = []
 load_dotenv()
@@ -26,9 +26,9 @@ class UserSession:
         self.token = token
         self.username = username
         self.user_id = user_id
-        self.product_id = api_data['product_id']
-        self.master_api_key = api_data['master_api_key']
-        self.this_session = api_data['this_session']
+        self.product_id = api_data["product_id"]
+        self.master_api_key = api_data["master_api_key"]
+        self.this_session = api_data["this_session"]
         self.ip = ip
 
     @staticmethod
@@ -36,36 +36,42 @@ class UserSession:
         try:
             payload = jwt.decode(
                 jwt=token,
-                key=str(os.environ['WP_JWT']),
-                algorithms=['HS256'],
-                options={'verify_signature': True}
+                key=str(os.environ["WP_JWT"]),
+                algorithms=["HS256"],
+                options={"verify_signature": True},
             )
             # print(f'Payload: {c_grey(payload)}')
             print(
-                f'[{UserSession.dt()}]'
+                f"[{UserSession.dt()}]"
                 f'{c_purple("<" + remote_ip + ">")} '
-                f'{c_cyan(username)} '
-                f'{c_blue(sid)} '
+                f"{c_cyan(username)} "
+                f"{c_blue(sid)} "
                 f'{c_green("Token verified. User is authenticated")} Session ID: '
-                f'{c_grey(this_session)}'
+                f"{c_grey(this_session)}"
             )
             return payload
         except jwt.InvalidTokenError as e:
-            print(f'[{UserSession.dt()}]'
-                  f'{c_purple("<" + remote_ip + ">")} '
-                  f'{c_cyan(username)} '
-                  f'{c_blue(sid)} '
-                  f'{c_red("Invalid token")}: {c_red(str(e))}')
+            print(
+                f"[{UserSession.dt()}]"
+                f'{c_purple("<" + remote_ip + ">")} '
+                f"{c_cyan(username)} "
+                f"{c_blue(sid)} "
+                f'{c_red("Invalid token")}: {c_red(str(e))}'
+            )
             return None
 
     @staticmethod
     def dt():
-        return datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        return datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
     def __str__(self):
-        return f"'sid': '{self.sid}', 'username': '{self.username}', 'user_id': '{self.user_id}', " \
-               f"'token': '{self.token}', 'product_id': '{self.product_id}', " \
-               f"'master_api_key': '{self.master_api_key}', 'this_session': '{self.this_session}'"
+        return (
+            f"'sid': '{self.sid}', 'username': '{self.username}', "
+            f"'user_id': '{self.user_id}', 'token': '{self.token}', "
+            f"'product_id': '{self.product_id}', "
+            f"'master_api_key': '{self.master_api_key}', "
+            f"'this_session': '{self.this_session}'"
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -73,19 +79,17 @@ class UserSession:
 
 async def license_api(action, token, apikey, session_id, product_id):
     # Possible values for action: 'status', 'activate', 'deactivate'
-    url = 'https://swadbot.com/'
+    url = "https://swadbot.com/"
     params = {
-        'wc-api': 'wc-am-api',
-        'wc_am_action': action,
-        'api_key': apikey,
-        'instance': session_id,
-        'product_id': product_id
+        "wc-api": "wc-am-api",
+        "wc_am_action": action,
+        "api_key": apikey,
+        "instance": session_id,
+        "product_id": product_id,
     }
     # with httpx.AsyncClient() as client:
     response = await httpx.AsyncClient().post(
-        url=url,
-        params=params,
-        headers={'Authorization': f'Bearer {token}'}
+        url=url, params=params, headers={"Authorization": f"Bearer {token}"}
     )
     if response.status_code == 200:
         json_data = response.json()
@@ -97,158 +101,185 @@ async def license_api(action, token, apikey, session_id, product_id):
 async def index(request_):
     """Serve the client-side application."""
     return aiohttp_jinja2.render_template(
-        'index.html',
+        "index.html",
         context={
-            'active_sessions': active_sessions,
-            'session_count': len(active_sessions),
-            'connection_log': connection_log
+            "active_sessions": active_sessions,
+            "session_count": len(active_sessions),
+            "connection_log": connection_log,
         },
-        request=request_
+        request=request_,
     )
 
 
-@sio.on('connect')
+@sio.on("connect")
 async def connect(sid, environ, auth):
     try:
-        remote_ip = auth['ip']
+        remote_ip = auth["ip"]
     except TypeError:
-        remote_ip = '0.0.0.0'
+        remote_ip = "0.0.0.0"
     if auth is None:
-        print(f'[{UserSession.dt()}]{c_purple("<" + remote_ip + ">")} {c_cyan(auth["username"])} '
-              f'connected with SID {c_blue(sid)} and {c_red("NO token")}')
-        await sio.emit('message', f'{remote_ip} {sid}, invalid token.', to=sid)
+        print(
+            f'[{UserSession.dt()}]{c_purple("<" + remote_ip + ">")} '
+            f'{c_cyan(auth["username"])} connected with SID '
+            f'{c_blue(sid)} and {c_red("NO token")}'
+        )
+        await sio.emit("message", f"{remote_ip} {sid}, invalid token.", to=sid)
         await sio.disconnect(sid)
         # await sio.eio.disconnect(sid)
-        html_log(sid, 'connected with no token', ip=remote_ip, username=auth['username'])
+        html_log(
+            sid, "connected with no token", ip=remote_ip, username=auth["username"]
+        )
         return
     print(
-        f'[{UserSession.dt()}]'
+        f"[{UserSession.dt()}]"
         f'{c_purple("<" + remote_ip + ">")} '
         f'{c_cyan(auth["username"])} connected with SID '
-        f'{c_blue(sid)} and token: '
+        f"{c_blue(sid)} and token: "
         f'{c_grey(auth["token"][:16] + "..." + auth["token"][-43:])}'
     )
-    await sio.emit('message', f'Hello {remote_ip} {sid}, we are verifying your token...', to=sid)
-    result = UserSession.verify_token(auth['token'], remote_ip, sid, auth['username'], auth['api_data']['this_session'])
+    await sio.emit(
+        "message", f"Hello {remote_ip} {sid}, we are verifying your token...", to=sid
+    )
+    result = UserSession.verify_token(
+        auth["token"],
+        remote_ip,
+        sid,
+        auth["username"],
+        auth["api_data"]["this_session"],
+    )
     if result is None:
-        await sio.emit('message', f'Invalid token: {result}', to=sid)
+        await sio.emit("message", f"Invalid token: {result}", to=sid)
         await sio.disconnect(sid)
-        html_log(sid, 'connected with invalid token', ip=remote_ip, username=auth['username'])
+        html_log(
+            sid, "connected with invalid token", ip=remote_ip, username=auth["username"]
+        )
     else:
-        html_log(sid, 'connected and authenticated', ip=remote_ip, username=auth['username'])
+        html_log(
+            sid, "connected and authenticated", ip=remote_ip, username=auth["username"]
+        )
         active_sessions[sid] = UserSession(
             sid,
-            auth['token'],
-            auth['username'],
-            auth['user_id'],
-            auth['api_data'],
-            remote_ip
+            auth["token"],
+            auth["username"],
+            auth["user_id"],
+            auth["api_data"],
+            remote_ip,
         )
         license_api_response = await license_api(
-            'activate',
-            auth['token'],
-            auth['api_data']['master_api_key'],
-            auth['api_data']['this_session'],
-            auth['api_data']['product_id']
+            "activate",
+            auth["token"],
+            auth["api_data"]["master_api_key"],
+            auth["api_data"]["this_session"],
+            auth["api_data"]["product_id"],
         )
-        if license_api_response['success']:
+        if license_api_response["success"]:
             print(
-                f'[{UserSession.dt()}]'
+                f"[{UserSession.dt()}]"
                 f'{c_purple("<" + remote_ip + ">")} '
                 f'{c_cyan(auth["username"])} '
-                f'{c_blue(sid)} '
-                f'{c_green(f"Node lock acquired. License is activated!")}'
+                f"{c_blue(sid)} "
+                f'{c_green("Node lock acquired. License is activated!")}'
                 f'({c_white(license_api_response["message"])})'
             )
-            await sio.emit('message', f'Success!', to=sid)
+            await sio.emit("message", "Success!", to=sid)
         else:
             print(
-                f'[{UserSession.dt()}]'
+                f"[{UserSession.dt()}]"
                 f'{c_purple("<" + remote_ip + ">")} '
                 f'{c_cyan(auth["username"])} '
-                f'{c_blue(sid)} '
+                f"{c_blue(sid)} "
                 f'{c_red("license is not activated.")} '
                 f'(Response Code: {c_red(license_api_response["code"])}) '
                 f'{license_api_response["error"]}'
             )
-            await sio.emit('message', f'License is not activated', to=sid)
+            await sio.emit("message", "License is not activated", to=sid)
             await sio.disconnect(sid)
             # await sio.eio.disconnect(sid)
 
 
-@sio.on('message')
+@sio.on("message")
 async def message(sid, data):
     print(
-        f'[{UserSession.dt()}]{c_purple("<" + active_sessions[sid].ip + ">")} {c_cyan(active_sessions[sid].username)} '
-        f'{c_blue(sid)}: '
-        f'{c_yellow(data)}'
+        f'[{UserSession.dt()}]{c_purple("<" + active_sessions[sid].ip + ">")} '
+        f"{c_cyan(active_sessions[sid].username)} "
+        f"{c_blue(sid)}: "
+        f"{c_yellow(data)}"
     )
-    if data == 'poopoo':
+    if data == "poopoo":
         print(f'[{UserSession.dt()}] {c_green("Super secret message received!")} ')
         return
-    await sio.emit('message', sid + ': ' + data)
+    await sio.emit("message", sid + ": " + data)
 
 
-@sio.on('disconnect')
+@sio.on("disconnect")
 async def disconnect(sid):
     if sid not in active_sessions:
-        print(f'[{UserSession.dt()}]', c_yellow(' Session not found. No need to clean dict.'))
+        print(
+            f"[{UserSession.dt()}]",
+            c_yellow(" Session not found. No need to clean dict."),
+        )
         return
     session = active_sessions[sid]
-    html_log(sid, 'disconnected', ip=session.ip, username=session.username)
+    html_log(sid, "disconnected", ip=session.ip, username=session.username)
     license_api_response = await license_api(
-        'deactivate',
+        "deactivate",
         session.token,
         session.master_api_key,
         session.this_session,
-        session.product_id
+        session.product_id,
     )
     try:
-        msg = f'{c_green("Node lock released successfully!")} ({license_api_response["activations_remaining"]})'
+        msg = (
+            f'{c_green("Node lock released successfully!")} '
+            f'({license_api_response["activations_remaining"]})'
+        )
     except KeyError:
         try:
-            msg = f'{c_red("Node lock release failed!")} Code {c_red(license_api_response["code"])}. ' \
-                  f'{license_api_response["error"]}'
+            msg = (
+                f'{c_red("Node lock release failed!")} Code '
+                f'{c_red(license_api_response["code"])}. '
+                f'{license_api_response["error"]}'
+            )
         except KeyError:
             msg = "unknown"
     print(
-        f'[{UserSession.dt()}]'
+        f"[{UserSession.dt()}]"
         f'{c_purple("<" + active_sessions[sid].ip + ">")} '
-        f'{c_cyan(active_sessions[sid].username)} '
-        f'{c_blue(sid)} '
+        f"{c_cyan(active_sessions[sid].username)} "
+        f"{c_blue(sid)} "
         f'{c_red("Disconnected!")} '
-        f'{msg}'
+        f"{msg}"
     )
     del active_sessions[sid]
     # await sio.disconnect(sid)
     await sio.eio.disconnect(sid)
 
 
-@sio.on('heartbeat')
+@sio.on("heartbeat")
 async def heartbeat(sid, data):
     session = active_sessions[sid]
     license_api_response = await license_api(
-        'status',
+        "status",
         session.token,
         session.master_api_key,
         session.this_session,
-        session.product_id
+        session.product_id,
     )
     print(
         f'[{UserSession.dt()}]{c_purple("<" + session.ip + ">")} '
-        f'{c_cyan(session.username)} '
-        f'{c_blue(sid)}: '
-        f'{c_yellow(data)}. '
+        f"{c_cyan(session.username)} "
+        f"{c_blue(sid)}: "
+        f"{c_yellow(data)}. "
         f'API Response: Node lock is {license_api_response["status_check"]}'
     )
-    if license_api_response['status_check'] == 'active':
-        await sio.emit('heartbeat', 'pong', to=sid)
+    if license_api_response["status_check"] == "active":
+        await sio.emit("heartbeat", "pong", to=sid)
         return
-    await sio.emit('heartbeat', f'fail', to=sid)
+    await sio.emit("heartbeat", "fail", to=sid)
     print(
         f'[{UserSession.dt()}]{c_purple("<" + session.ip + ">")} '
-        f'{c_cyan(session.username)} '
-        f'{c_blue(sid)} '
+        f"{c_cyan(session.username)} "
+        f"{c_blue(sid)} "
         f'{c_red("Node lock is not active.")} Disconnecting...'
     )
     await sio.disconnect(sid)
@@ -257,25 +288,26 @@ async def heartbeat(sid, data):
 # Unused
 def get_client_ip(environ):
     """
-    Doesn't seem to work in local or production, hacky solution for now is to have the client send the IP
-    after querying ipify's api. Definitely not the best solution. Will need to find a better way.
+    Doesn't seem to work in local or production, hacky solution for now is to have the
+    client send the IP after querying ipify's api. Definitely not the best solution.
+    Will need to find a better way.
     """
-    if environ.get('HTTP_X_FORWARDED_FOR') is None:
-        a = environ['REMOTE_ADDR']
+    if environ.get("HTTP_X_FORWARDED_FOR") is None:
+        a = environ["REMOTE_ADDR"]
     else:
-        a = environ['HTTP_X_FORWARDED_FOR']
-    print(f'CLIENT IP: {a}')
+        a = environ["HTTP_X_FORWARDED_FOR"]
+    print(f"CLIENT IP: {a}")
     return a
 
 
-def html_log(sid, msg, ip=None, username='Unknown'):
-    connection_log.append(f'[{UserSession.dt()}] <{ip}> {username} {sid} {msg}')
+def html_log(sid, msg, ip=None, username="Unknown"):
+    connection_log.append(f"[{UserSession.dt()}] <{ip}> {username} {sid} {msg}")
     if len(connection_log) > 200:
         connection_log.pop()
 
 
-app.router.add_static('/static', 'static')
-app.router.add_get('/', index)
+app.router.add_static("/static", "static")
+app.router.add_get("/", index)
 
 
 # color console output (windows not supported)
@@ -316,9 +348,9 @@ def c_default(text: str) -> str:
 
 
 async def my_web_app():
-    print(f'Starting SWADBot License Server... <3 <3 <3')
+    print("Starting SWADBot License Server... <3 <3 <3")
     return app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     web.run_app(my_web_app(), host=SERVER_URL, port=PORT)
