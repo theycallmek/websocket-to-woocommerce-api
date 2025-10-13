@@ -48,19 +48,22 @@ PG_URI = (
 print(f'PG_URI: {PG_URI}')
 
 def get_wp_mysql_engine() -> engine:
-    """Creates and returns a new MySQL engine instance for WordPress.
+    """Creates and returns a SQLAlchemy engine for the WordPress MySQL database.
 
     Returns:
-        engine: The SQLAlchemy engine instance.
+        sqlalchemy.engine.Engine: The SQLAlchemy engine instance.
     """
-    return create_engine(url=WP_URI, echo=False)
+    return create_engine(
+        url=WP_URI,
+        echo=False
+    )
 
 
 def get_pg_engine() -> AsyncEngine:
-    """Creates and returns a new asynchronous PostgreSQL engine instance.
+    """Creates and returns an async SQLAlchemy engine for the PostgreSQL database.
 
     Returns:
-        AsyncEngine: The SQLAlchemy asynchronous engine instance.
+        sqlalchemy.ext.asyncio.AsyncEngine: The async SQLAlchemy engine instance.
     """
     return create_async_engine(url=PG_URI, echo=False)
 
