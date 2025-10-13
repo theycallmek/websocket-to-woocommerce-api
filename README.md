@@ -151,3 +151,31 @@ Run the container (remember to pass your environment variables):
 ```sh
 docker run -d --env-file .env -p 8080:8080 license-server
 ```
+
+---
+
+## 👨‍💻 Developer Guide
+
+This guide provides additional details for developers working on this middleware.
+
+### Core Logic
+
+- **`login_server.py`**: This is the main FastAPI application file. It defines all API endpoints, data models (using SQLModel), and database interactions.
+    - **Authentication Flow**: The `/login` endpoint takes a username and password. It first queries the WordPress MySQL database to get the user's data, including their hashed password. It then uses the `verify_pw_hash` function to securely check the provided password against the hash. If valid, it calls out to the WordPress site's JWT plugin to get an authentication token.
+    - **License Management Flow**: The `/license/{action}` endpoint orchestrates license management. It first retrieves the user's license data (the `master_api_key`) from the `wp_wc_am_api_resource` table in the WordPress database. It then creates or updates a session in the local PostgreSQL database. Finally, it makes a server-to-server request to the WooCommerce API Manager endpoint on the live WordPress site to perform the requested action (`activate`, `deactivate`, or `status`).
+    - **Session Handling**: The server maintains its own session state in a PostgreSQL database (`user_sessions` table). This allows it to track which users have active license sessions. A background task (`deactivate_expired_sessions`) runs continuously to clean up sessions that have been inactive for a set period, automatically deactivating the license on the WordPress side.
+
+- **`login_client.py`**: This is a simple Python client script that demonstrates how to interact with the FastAPI server. It shows the full authentication and license activation/status check cycle. It's useful for testing the server endpoints locally.
+
+### Database Models
+
+The application uses `SQLModel` for ORM capabilities.
+
+- **WordPress Models** (`WPUsers`, `WPWCAMApiActivation`, `WPWCAMApiResource`): These models map directly to tables in the WordPress database. They are used for read-only operations to fetch user and license data.
+- **Session Models** (`UserSession`, `Logs`): These models map to tables created in the dedicated PostgreSQL database. They are used for read-write operations to manage sessions and log events.
+
+### Setup and Configuration Notes
+
+- **Password Hashing**: The `verify_pw_hash` function is critical. It correctly handles the modern `$wp$` bcrypt hashes used by recent WordPress versions. This requires the `bcrypt` and `passlib` libraries.
+- **Environment Variables**: The use of a `.env` file is crucial for security. Never hard-code credentials in the source code. The `dotenv` library loads these variables at startup.
+- **Asynchronous Operations**: The server uses `asyncio` and `asyncpg` for non-blocking database calls to the PostgreSQL session database, ensuring high performance. Interactions with the WordPress MySQL database are synchronous as `mysql-connector-python` does not have mature `asyncio` support.

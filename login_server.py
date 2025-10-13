@@ -48,10 +48,20 @@ PG_URI = (
 print(f'PG_URI: {PG_URI}')
 
 def get_wp_mysql_engine() -> engine:
+    """Creates and returns a new MySQL engine instance for WordPress.
+
+    Returns:
+        engine: The SQLAlchemy engine instance.
+    """
     return create_engine(url=WP_URI, echo=False)
 
 
 def get_pg_engine() -> AsyncEngine:
+    """Creates and returns a new asynchronous PostgreSQL engine instance.
+
+    Returns:
+        AsyncEngine: The SQLAlchemy asynchronous engine instance.
+    """
     return create_async_engine(url=PG_URI, echo=False)
 
 
@@ -60,6 +70,13 @@ pg_engine = get_pg_engine()  # Connects to dedicated PostgresSQL
 
 
 def get_my_ip():
+    """Retrieves the public IP address of the server.
+
+    Uses an external service (api.ipify.org) to determine the public IP.
+
+    Returns:
+        str: The public IP address as a string, or "0.0.0.0" if the request fails.
+    """
     with httpx.Client() as client:
         response = client.get("https://api.ipify.org", timeout=5)
         response = client.get("https://api.ipify.org", timeout=5)
@@ -69,6 +86,23 @@ def get_my_ip():
 
 
 class WPUsers(SQLModel, table=True):
+    """Represents a user from the WordPress `wp_users` table.
+
+    This model maps to the columns of the `wp_users` table to facilitate
+    database operations.
+
+    Attributes:
+        ID: The unique identifier for the user.
+        user_login: The user's login name.
+        user_pass: The user's hashed password.
+        user_nicename: A URL-friendly version of the user's name.
+        user_email: The user's email address.
+        user_url: The user's website URL.
+        user_registered: The date and time the user registered.
+        user_activation_key: The key used for account activation.
+        user_status: The status of the user's account.
+        display_name: The user's display name.
+    """
     __tablename__: str = "wp_users"
     ID: int = Field(primary_key=True)
     user_login: str = Field(index=True)
@@ -83,6 +117,33 @@ class WPUsers(SQLModel, table=True):
 
 
 class WPWCAMApiActivation(SQLModel, table=True):
+    """Represents a license activation from the `wp_wc_am_api_activation` table.
+
+    This model maps to the columns of the `wp_wc_am_api_activation` table, which
+    stores data about individual license key activations.
+
+    Attributes:
+        activation_id: The unique identifier for the activation.
+        activation_time: The timestamp of the activation.
+        api_key: The API key used for the activation.
+        api_resource_id: The ID of the associated API resource.
+        assigned_product_id: The ID of the product assigned to this activation.
+        associated_api_key_id: The ID of the associated API key.
+        instance: A unique identifier for the instance of the activated product.
+        ip_address: The IP address from which the activation was made.
+        master_api_key: The master API key for the product.
+        object: The object type (e.g., 'api_activation').
+        order_id: The ID of the order associated with this activation.
+        order_item_id: The ID of the order item.
+        product_id: The ID of the product.
+        product_order_api_key: The product-specific order API key.
+        sub_id: The subscription ID, if applicable.
+        sub_item_id: The subscription item ID.
+        sub_parent_id: The parent subscription ID.
+        version: The version of the product that was activated.
+        update_requests: The number of update requests made.
+        user_id: The ID of the user who owns the license.
+    """
     __tablename__: str = "wp_wc_am_api_activation"
     activation_id: int = Field(primary_key=True, index=True)
     activation_time: datetime
@@ -107,6 +168,41 @@ class WPWCAMApiActivation(SQLModel, table=True):
 
 
 class WPWCAMApiResource(SQLModel, table=True):
+    """Represents an API resource from the `wp_wc_am_api_resource` table.
+
+    This model maps to the columns of the `wp_wc_am_api_resource` table,
+    which stores information about licensable products and their resources.
+
+    Attributes:
+        api_resource_id: The unique identifier for the API resource.
+        activation_ids: A string of activation IDs associated with this resource.
+        activations_total: The total number of activations used.
+        activations_purchased: The number of activations purchased.
+        activations_purchased_total: The total number of activations ever purchased.
+        active: Whether the resource is active.
+        access_expires: The date when access to the resource expires.
+        access_granted: The date when access was granted.
+        associated_api_key_ids: A string of associated API key IDs.
+        collaborators: A string of collaborator IDs.
+        download_requests: The number of download requests made.
+        item_qty: The quantity of the item purchased.
+        master_api_key: The master API key for the resource.
+        order_id: The ID of the associated order.
+        order_item_id: The ID of the associated order item.
+        order_key: The key of the associated order.
+        parent_id: The ID of the parent resource, if any.
+        product_id: The ID of the product.
+        product_order_api_key: The product-specific order API key.
+        product_title: The title of the product.
+        refund_qty: The quantity refunded.
+        sub_id: The subscription ID, if applicable.
+        sub_item_id: The subscription item ID.
+        sub_previous_order_id: The ID of the previous subscription order.
+        sub_order_key: The key of the subscription order.
+        sub_parent_id: The parent subscription ID.
+        user_id: The ID of the user who owns the resource.
+        variation_id: The ID of the product variation, if any.
+    """
     __tablename__: str = "wp_wc_am_api_resource"
     api_resource_id: int = Field(primary_key=True, index=True)
     activation_ids: str
@@ -139,6 +235,23 @@ class WPWCAMApiResource(SQLModel, table=True):
 
 
 class UserSession(SQLModel, table=True):
+    """Represents a user's session in the PostgreSQL database.
+
+    This model stores session information for authenticated users, linking
+    their WordPress identity with a temporary session on this server.
+
+    Attributes:
+        id: The unique identifier for the session.
+        token: The JWT token for the session.
+        username: The user's login name.
+        user_id: The user's WordPress ID.
+        product_id: The ID of the product associated with the session.
+        master_api_key: The master API key for the licensed product.
+        this_session: A unique identifier for this specific session instance.
+        ip: The IP address of the user.
+        create_date: The timestamp when the session was created.
+        last_access: The timestamp of the last access for this session.
+    """
     __tablename__: str = "user_sessions"
     id: Optional[int] = Field(default=None, primary_key=True)
     token: str
@@ -153,6 +266,18 @@ class UserSession(SQLModel, table=True):
 
 
 class TokenData(SQLModel):
+    """Represents the data returned after a successful login.
+
+    This model defines the structure of the JSON response sent to the client
+    upon successful authentication.
+
+    Attributes:
+        token: The JWT token for authenticating subsequent requests.
+        user_id: The user's WordPress ID.
+        user_email: The user's email address.
+        user_nicename: The user's URL-friendly nicename.
+        user_display_name: The user's display name.
+    """
     token: str
     user_id: int
     user_email: str
@@ -161,6 +286,17 @@ class TokenData(SQLModel):
 
 
 class LicenseResponse(SQLModel):
+    """Represents the response from a license API action.
+
+    This model defines the structure of the JSON response for license
+    activation, deactivation, and status checks.
+
+    Attributes:
+        success: A boolean indicating if the action was successful.
+        message: A descriptive message about the outcome of the action.
+        total_activations: The total number of activations for the license.
+        activations_remaining: The number of remaining activations.
+    """
     success: bool
     message: str
     total_activations: int
@@ -168,6 +304,18 @@ class LicenseResponse(SQLModel):
 
 
 class Logs(SQLModel, table=True):
+    """Represents a log entry in the PostgreSQL database.
+
+    This model is used to store logs of important events, such as login
+    attempts and license activations.
+
+    Attributes:
+        id: The unique identifier for the log entry.
+        username: The username associated with the event.
+        ip: The IP address from which the event originated.
+        message: A description of the logged event.
+        create_date: The timestamp when the log entry was created.
+    """
     __tablename__: str = "logs"
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str
@@ -176,7 +324,13 @@ class Logs(SQLModel, table=True):
     create_date: Optional[datetime] = Field(default=datetime.now(), index=True)
 
 async def create_log_entry(username: str, ip: str, message: str):
-    """Creates a log entry and saves it to the database asynchronously."""
+    """Creates a log entry and saves it to the database asynchronously.
+
+    Args:
+        username: The username to associate with the log entry.
+        ip: The IP address to associate with the log entry.
+        message: The log message.
+    """
     log_entry = Logs(username=username, ip=ip, message=message)
     async with AsyncSession(pg_engine) as session:
         session.add(log_entry)
@@ -184,6 +338,16 @@ async def create_log_entry(username: str, ip: str, message: str):
 
 
 def get_wp_user_data(username: str) -> WPUsers:
+    """Retrieves user data from the WordPress database.
+
+    Can query by either username or email address.
+
+    Args:
+        username: The user's login name or email address.
+
+    Returns:
+        WPUsers: An object containing the user's data, or None if not found.
+    """
     with Session(wp_engine) as session:
         # If user enters email as username then use email to find user
         if "@" in username and "." in username:
@@ -195,6 +359,18 @@ def get_wp_user_data(username: str) -> WPUsers:
 
 
 async def get_token_data(username: str, password: str) -> dict | None:
+    """Authenticates with WordPress and retrieves a JWT token.
+
+    Sends a POST request to the WordPress JWT authentication endpoint.
+
+    Args:
+        username: The user's login name.
+        password: The user's password.
+
+    Returns:
+        dict | None: A dictionary containing the token data if successful,
+                     otherwise None.
+    """
     # auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
     auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
 
@@ -213,9 +389,18 @@ async def get_token_data(username: str, password: str) -> dict | None:
 
 
 def verify_pw_hash(pw: str, pw_hash: str) -> bool:
-    """
-    Verifies a plaintext password against a modern WordPress hash
-    that starts with '$wp'.
+    """Verifies a plaintext password against a modern WordPress hash.
+
+    This function is specifically for WordPress hashes that start with '$wp$'.
+    It replicates the pre-hashing step that WordPress performs before using
+    bcrypt.
+
+    Args:
+        pw: The plaintext password to verify.
+        pw_hash: The hashed password from the database.
+
+    Returns:
+        bool: True if the password matches the hash, False otherwise.
     """
     if not isinstance(pw_hash, str) or not pw_hash.startswith('$wp$'):
         # This function is only for modern WordPress hashes.
@@ -252,13 +437,32 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 @app.on_event("startup")
 async def startup():
+    """Initializes background tasks when the application starts.
+
+    This function is decorated to run on application startup. It creates a
+    background task to periodically deactivate expired user sessions.
+    """
     logging.debug("STARTING UP")
     asyncio.create_task(deactivate_expired_sessions())
 
 
 @app.get("/admin/{password}", response_class=HTMLResponse)
 async def admin(request: Request, password: str):
-    # logging.debug(f"PASSWORD: {password}")
+    """Serves the admin dashboard page.
+
+    Provides a simple password-protected admin page to view active users
+    and recent logs.
+
+    Args:
+        request: The incoming request object.
+        password: The password provided in the URL path.
+
+    Returns:
+        HTMLResponse | JSONResponse: The rendered admin template if the
+                                     password is correct, otherwise a 401
+                                     error response.
+    """
+    logging.debug(f"PASSWORD: {password}")
     if password == "password":
         active_users = await get_active_users()
         logs = await get_logs_from_db(100)
@@ -309,6 +513,16 @@ async def deactivate_session_admin(session_id: str, payload: DeactivateRequest):
 
 @app.get("/")
 async def root(request: Request):
+    """The root endpoint of the application.
+
+    Provides a simple welcome message and returns the client's IP address.
+
+    Args:
+        request: The incoming request object.
+
+    Returns:
+        dict: A dictionary containing a welcome message and the client's IP.
+    """
     logging.debug("ROOT")
     try:
         client_ip = request.headers["X-Forwarded-For"]
@@ -327,6 +541,21 @@ async def root(request: Request):
 async def login(
     request: Request, user_login: str, user_pass: str
 ) -> dict | JSONResponse:
+    """Handles user login.
+
+    Verifies user credentials against the WordPress database, and if successful,
+    retrieves a JWT token and returns user data.
+
+    Args:
+        request: The incoming request object.
+        user_login: The user's login name or email.
+        user_pass: The user's plaintext password.
+
+    Returns:
+        dict | JSONResponse: A dictionary matching the TokenData model on
+                             success, or a JSONResponse with a 401 error
+                             on failure.
+    """
     logging.debug("LOGIN")
     data = get_wp_user_data(user_login)
     try:
@@ -370,6 +599,23 @@ async def license_api(
     # Use Depends to correctly handle the optional Request dependency
     request: typing.Optional[Request] = Depends(get_request_or_none),
 ) -> LicenseResponse | None:
+    """Handles license activation, deactivation, and status checks.
+
+    This endpoint communicates with the WooCommerce API Manager on the
+    WordPress site to manage software licenses.
+
+    Args:
+        action: The license action to perform ('activate', 'deactivate', 'status').
+        username: The username of the license holder.
+        client_id: The WordPress user ID of the license holder.
+        token: The JWT token for authentication.
+        session_id: A unique identifier for the client's session.
+        client_ip: The client's IP address.
+
+    Returns:
+        LicenseResponse | None: A LicenseResponse object with the result of the
+                                API call, or None if a critical error occurs.
+    """
     # Possible values for action: 'status', 'activate', 'deactivate'
     if request is not None:
         # Called from a user request, get IP from headers
@@ -401,11 +647,11 @@ async def license_api(
     # logging.debug(f'API_DATA: {api_data}')
     try:
         prod_id = api_data.product_id
-    except KeyError:
-        Logs(
+    except (KeyError, AttributeError):
+        await create_log_entry(
             username=username,
             ip=client_ip,
-            message=f"Attemted action {action} failed! No active license found for this user.",
+            message=f"Attempted action {action} failed! No active license found for this user.",
         )
         return LicenseResponse(
             success=False,
@@ -486,6 +732,12 @@ async def license_api(
 
 
 async def deactivate_expired_sessions() -> None:
+    """Periodically checks for and deactivates expired sessions.
+
+    This function runs in a continuous loop as a background task. It queries
+    the database for sessions that have not been accessed recently and
+    deactivates them via the license API.
+    """
     while True:
         async with AsyncSession(pg_engine) as session:
             statement = select(UserSession).where(
@@ -508,6 +760,11 @@ async def deactivate_expired_sessions() -> None:
 
 
 async def client_session_delete(client_session: UserSession) -> None:
+    """Deletes a user session from the database.
+
+    Args:
+        client_session: The UserSession object to delete.
+    """
     async with AsyncSession(pg_engine) as session:
         statement = delete(UserSession).where(
             UserSession.this_session == client_session.this_session
@@ -518,6 +775,11 @@ async def client_session_delete(client_session: UserSession) -> None:
 
 
 async def client_session_update(client_session: UserSession) -> None:
+    """Updates the last_access time for a user session.
+
+    Args:
+        client_session: The UserSession object to update.
+    """
     async with AsyncSession(pg_engine) as session:
         statement = (
             update(UserSession)
@@ -530,6 +792,11 @@ async def client_session_update(client_session: UserSession) -> None:
 
 
 async def client_session_write(client_session: UserSession) -> None:
+    """Writes a new user session to the database.
+
+    Args:
+        client_session: The UserSession object to write.
+    """
     async with AsyncSession(pg_engine) as session:
         session.add(client_session)
         await session.commit()
@@ -538,6 +805,15 @@ async def client_session_write(client_session: UserSession) -> None:
 
 
 async def get_wp_api_resource_data(user_id: int) -> WPWCAMApiResource:
+    """Retrieves API resource data for a user from the WordPress database.
+
+    Args:
+        user_id: The WordPress user ID.
+
+    Returns:
+        WPWCAMApiResource: An object containing the API resource data, or
+                           None if not found.
+    """
     with Session(wp_engine) as session:
         statement = select(WPWCAMApiResource).where(
             WPWCAMApiResource.user_id == user_id
@@ -550,6 +826,15 @@ async def get_wp_api_resource_data(user_id: int) -> WPWCAMApiResource:
 async def get_wp_api_activations_data(
     activation_ids: list[int],
 ) -> list[WPWCAMApiActivation]:
+    """Retrieves details for multiple API activations from WordPress.
+
+    Args:
+        activation_ids: A list of activation IDs to retrieve.
+
+    Returns:
+        list[WPWCAMApiActivation]: A list of objects containing the
+                                   activation data.
+    """
     with Session(wp_engine) as session:
         total_results = []
         for client_id in activation_ids:
@@ -563,6 +848,17 @@ async def get_wp_api_activations_data(
 
 
 async def check_last_create_date(client_id: int) -> bool:
+    """Checks if a user has activated a session recently to prevent spam.
+
+    This function is a rate-limiting measure.
+
+    Args:
+        client_id: The user's WordPress ID.
+
+    Returns:
+        bool: True if the user is allowed to create a new session,
+              False otherwise.
+    """
     async with AsyncSession(pg_engine) as session:
         statement = (
             select(UserSession)
@@ -576,6 +872,11 @@ async def check_last_create_date(client_id: int) -> bool:
 
 
 async def get_active_users() -> list[UserSession]:
+    """Retrieves a list of all active user sessions from the database.
+
+    Returns:
+        list[UserSession]: A list of active UserSession objects.
+    """
     async with AsyncSession(pg_engine) as session:
         statement = select(UserSession)
         results = await session.execute(statement)
@@ -586,6 +887,14 @@ async def get_active_users() -> list[UserSession]:
 
 
 async def get_logs_from_db(limit: int) -> list[Logs]:
+    """Retrieves log entries from the database.
+
+    Args:
+        limit: The maximum number of log entries to retrieve.
+
+    Returns:
+        list[Logs]: A list of Log objects, ordered by creation date.
+    """
     async with AsyncSession(pg_engine) as session:
         statement = select(Logs).order_by(Logs.create_date.desc()).limit(limit)
         results = await session.execute(statement)
@@ -596,11 +905,26 @@ async def get_logs_from_db(limit: int) -> list[Logs]:
 
 
 def run():
+    """Configures the asyncio event loop for Windows if necessary.
+
+    This function is called when the server is started with a runner like
+    uvicorn.
+    """
     if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 def test_get_token_data(username: str, password: str) -> dict | None:
+    """Synchronous version of get_token_data for testing purposes.
+
+    Args:
+        username: The user's login name.
+        password: The user's password.
+
+    Returns:
+        dict | None: A dictionary containing the token data if successful,
+                     otherwise None.
+    """
     # auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
     auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
 
@@ -618,6 +942,19 @@ def test_get_token_data(username: str, password: str) -> dict | None:
         return None
 
 def login_test(user_login: str, user_pass: str) -> dict | JSONResponse:
+    """A synchronous login test function.
+
+    This function simulates the login process for testing purposes without
+    requiring a running FastAPI server.
+
+    Args:
+        user_login: The user's login name or email.
+        user_pass: The user's plaintext password.
+
+    Returns:
+        dict | JSONResponse: The token data on success, or a JSONResponse
+                             on failure.
+    """
     logging.debug("LOGIN")
     data = get_wp_user_data(user_login)
     client_ip = '127.0.0.1'
@@ -628,9 +965,7 @@ def login_test(user_login: str, user_pass: str) -> dict | JSONResponse:
         verified = False
     if verified:
         token_data = test_get_token_data(user_login, user_pass)
-        Logs(username=user_login, ip=client_ip, message="Login successful!")
     else:
-        Logs(username=user_login, ip=client_ip, message="Login failed!")
         return JSONResponse(status_code=401, content={"message": "Login failed"})
     return token_data
 
