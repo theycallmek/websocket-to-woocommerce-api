@@ -6,7 +6,7 @@ A robust and secure middleware server built with FastAPI that acts as a bridge b
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)
 
-NOTE: This was a project I never intended on releasing publicly. So there are some things like naming conventions will be tailored towards me. Make sure to check out the developer guide at the bottom.
+NOTE: This was a project I never intended on releasing publicly. So there are some things like naming conventions that will be tailored towards me. Make sure to check out the developer guide at the bottom.
 
 ---
 
