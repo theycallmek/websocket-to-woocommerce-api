@@ -64,7 +64,7 @@ Follow these steps to get the server running locally.
 ### 1. Clone the Repository
 
 ```sh
-git clone <your-repo-url>
+git clone theycallmek/woocommerce-license-server-for-apps
 cd websocket_test
 ```
 
