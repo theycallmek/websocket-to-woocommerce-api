@@ -28,12 +28,12 @@ This server is designed as a secure middleware layer. It prevents direct exposur
 
 ```
 ┌────────────┐      ┌──────────────────┐      ┌──────────────────────────┐
-| Client App | ───> |  FastAPI Server  | ───> |   WordPress MySQL DB     |
+| Client App | <──> |  FastAPI Server  | <──> |   WordPress MySQL DB     |
 └────────────┘      │ (This Project)   |      │ (for user data & pw hash)│
                     └──────────────────┘      └──────────────────────────┘
-                           │      │
+                           ↑      ↑
                            │      └──────────> ┌──────────────────────────┐
-                           │                   |   WordPress Site (WP-JSON) |
+                           │                   | WordPress Site (WP-JSON) |
                            │                   │ (for JWT & WC-AM API)    │
                            │                   └──────────────────────────┘
                            │
