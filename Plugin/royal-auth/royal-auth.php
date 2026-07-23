@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: RoyalAuth
- * Plugin URI: https://example.com/
+ * Plugin URI: https://github.com/theycallmek/woocommerce-license-server-for-apps/
  * Description: A WordPress plugin to manage authentication and provide a public API for license validation.
  * Version: 1.0.0
- * Author: Your Name
- * Author URI: https://example.com/
+ * Author: RoyalT
+ * Author URI: https://github.com/theycallmek
  * License: GPL2
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: royal-auth
