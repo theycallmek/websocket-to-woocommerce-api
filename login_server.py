@@ -31,6 +31,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 dotenv.load_dotenv()
 
+URL = "https://example_wordpress_url.com/"
+
 WP_URI = (
     f'mysql+mysqlconnector://{os.environ["WP_MYSQL_USER"]}'
     f':{os.environ["WP_MYSQL_PASS"]}'
@@ -374,9 +376,7 @@ async def get_token_data(username: str, password: str) -> dict | None:
         dict | None: A dictionary containing the token data if successful,
                      otherwise None.
     """
-    # auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
-    auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
-
+    auth_endpoint = f"{URL}wp-json/jwt-auth/v1/token"
     payload = {"username": username, "password": password}
     async with httpx.AsyncClient() as client:
         response = await client.post(auth_endpoint, json=payload, timeout=10)
@@ -645,7 +645,7 @@ async def license_api(
                 total_activations=0,
                 activations_remaining=0,
             )
-    url = "https://swadbot.com/"
+    url = URL
     api_data = await get_wp_api_resource_data(client_id)
     # logging.debug(f'API_DATA: {api_data}')
     try:
@@ -928,8 +928,8 @@ def test_get_token_data(username: str, password: str) -> dict | None:
         dict | None: A dictionary containing the token data if successful,
                      otherwise None.
     """
-    # auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
-    auth_endpoint = "https://swadbot.com/wp-json/jwt-auth/v1/token"
+
+    auth_endpoint = f"{URL}wp-json/jwt-auth/v1/token"
 
     payload = {"username": username, "password": password}
     with httpx.Client() as client:
@@ -973,10 +973,10 @@ def login_test(user_login: str, user_pass: str) -> dict | JSONResponse:
     return token_data
 
 if __name__ == "__main__":
-    USERNAME = 'test1'
-    PASSWORD = 'swadbotpass123'
+    USERNAME = 'example_username'
+    PASSWORD = 'example_password'
 
-    print("name = __main__")
+    print("name == __main__")
     login_test(USERNAME, PASSWORD)
 
 else: # NOT EQUALS to run when ran through uvicorn etc
