@@ -1,12 +1,12 @@
 # FastAPI WordPress Auth & License Middleware 🚀
 
-A robust and secure middleware server built with FastAPI that acts as a bridge between a client application via websocket connection and a WordPress backend. It handles user authentication via encrypted password hash and JWT token, license validation against WooCommerce API Manager, and persistent session management for multiple floating licenses per client.
+A robust and secure middleware server built with FastAPI that acts as a bridge between a client application via websocket connection and a WordPress backend. It handles user authentication via encrypted password hash and JWT token, license validation against WooCommerce API Manager, and persistent session management for multiple floating licenses per client. This will allow a user to register on your WordPress website, purchase a license or multiple licesense, then login to your app with their WordPress credentials if they have an active license.
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)
 
-NOTE: This was a project I never intended on releasing publicly. So there are some things like naming conventions that will be tailored towards me. Make sure to check out the developer guide at the bottom.
+NOTE: This was a project I never intended on releasing publicly. So there are some things like naming conventions that will be tailored towards me. Make sure to check out the developer guide at the bottom. I am not a professional developer. I do this as a hobby so there may be errors or bugs. Please feel free to submit a pull request! All contributions are more than welcome.
 
 ---
 
@@ -81,6 +81,7 @@ pip install -r requirements.txt
 ### 3. Configure Environment Variables
 
 Create a `.env` file in the project root. Use the following template and fill in your database credentials and other details. **Remember to use quotes for all values to prevent parsing errors.**
+You can copy the `.env.example` file, rename it to `.env`, and replace the example values to make it easy.
 
 ```env
 # .env
@@ -99,7 +100,11 @@ PG_HOST="your_pg_host"
 PG_DB_NAME="your_pg_db_name"
 ```
 
-### 4. Initialize the Session Database
+### 4. Configure .py File Constants
+
+Open `login_server.py` and update **URL** on line 34. Update it with your WordPress websites URL (https://example_wordpress_url.com/).
+
+### 5. Initialize the Session Database
 
 Run the `create_pg_db.py` script once to create the necessary tables (`user_sessions` and `logs`) in your PostgreSQL database.
 
@@ -107,7 +112,7 @@ Run the `create_pg_db.py` script once to create the necessary tables (`user_sess
 python create_pg_db.py
 ```
 
-### 5. Run the Server
+### 6. Run the Server
 
 Use the `entry.py` script to start the Uvicorn server with live reloading and configured logging.
 
@@ -172,8 +177,9 @@ This guide provides additional details for developers working on this middleware
     - **Authentication Flow**: The `/login` endpoint takes a username and password. It first queries the WordPress MySQL database to get the user's data, including their hashed password. It then uses the `verify_pw_hash` function to securely check the provided password against the hash. If valid, it calls out to the WordPress site's JWT plugin to get an authentication token.
     - **License Management Flow**: The `/license/{action}` endpoint orchestrates license management. It first retrieves the user's license data (the `master_api_key`) from the `wp_wc_am_api_resource` table in the WordPress database. It then creates or updates a session in the local PostgreSQL database. Finally, it makes a server-to-server request to the WooCommerce API Manager endpoint on the live WordPress site to perform the requested action (`activate`, `deactivate`, or `status`).
     - **Session Handling**: The server maintains its own session state in a PostgreSQL database (`user_sessions` table). This allows it to track which users have active license sessions. A background task (`deactivate_expired_sessions`) runs continuously to clean up sessions that have been inactive for a set period, automatically deactivating the license on the WordPress side.
+    - **Testing WordPress Configuration**: `login_server.py` can also be used to test your WordPress Configuration. To make sure the plugins are all functioning properly and you can communicate with the WordPress server properly. To do so, edit `login_server.py` starting on line 976 update **USERNAME** and **PASSWORD** with a user/pass that has been registered on your WordPress website. Finally, run `python login_server.py` and the console will show the response from the server.
 
-- **`login_client.py`**: This is a simple Python client script that demonstrates how to interact with the FastAPI server. It shows the full authentication and license activation/status check cycle. It's useful for testing the server endpoints locally.
+- **`login_client.py`**: This is a simple Python client script that demonstrates how to interact with the FastAPI server. It shows the full authentication and license activation/status check cycle. It's useful for testing the server endpoints locally. To use it, Update **USERNAME** and **PASSWORD** and run the file `python login_client.py`.
 
 ### Database Models
 
