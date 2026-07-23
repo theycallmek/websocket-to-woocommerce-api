@@ -1,20 +1,19 @@
 # FastAPI WordPress Auth & License Middleware 🚀
 
-NOTE: This was a project I never intended on releasing publicly. So there are some things that will be tailored towards me. Make sure to check out the developer guide at the bottom.
-
-A robust and secure middleware server built with FastAPI that acts as a bridge between a client application and a WordPress backend. It handles user authentication, license validation against WooCommerce API Manager (WC-AM), and persistent session management.
+A robust and secure middleware server built with FastAPI that acts as a bridge between a client application and a WordPress backend. It handles user authentication via encrypted password hash and JWT token, license validation against WooCommerce API Manager (WC-AM), and persistent session management.
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)
 
+NOTE: This was a project I never intended on releasing publicly. So there are some things like naming conventions will be tailored towards me. Make sure to check out the developer guide at the bottom.
 ---
 
 ## ✨ Key Features
 
 - **Secure WordPress Authentication**: Authenticates users against a WordPress database, with full support for modern `bcrypt` (`$wp$`) password hashes.
 - **JWT Token Management**: Interfaces with a WordPress JWT plugin to generate and manage authentication tokens.
-- **WooCommerce License API Integration**: Manages the complete license lifecycle (`activate`, `deactivate`, `status`) by communicating with the WooCommerce API Manager (WC-AM).
+- **WooCommerce License API Integration**: Manages the complete license lifecycle (`activate`, `deactivate`, `status`) by communicating with the plugin ~~WooCommerce API Manager~~ Kestrel API Manager for WooCommerce.
 - **Persistent Session Management**: Uses a dedicated PostgreSQL database to store and track active client sessions, ensuring stateful tracking across server restarts.
 - **Automatic Session Cleanup**: A background `asyncio` task runs periodically to find and deactivate expired sessions, keeping the system clean.
 - **Centralized & Configurable Logging**: All server and application logs are centralized, configurable, and can be piped to both the console and a log file (`app.log`).
@@ -51,9 +50,14 @@ Follow these steps to get the server running locally.
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11
 - Access to a WordPress database (MySQL/MariaDB)
 - A running PostgreSQL database
+
+### Wordpress Plugin Prerequisites
+- [Kestrel API Manager for WooCommerce](https://woocommerce.com/document/api-documentation/)
+- [JWT Authentication for WP REST API](https://wordpress.org/plugins/jwt-authentication-for-wp-rest-api/)
+- [REST API v2.0](https://github.com/WP-API/WP-API) (Required for JWT Auth Plugin)
 
 ### 1. Clone the Repository
 
